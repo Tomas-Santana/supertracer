@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>SuperTracer Logs</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f9;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    #reload {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+
+    #reload:hover {
+      background: #0056b3;
+    }
+
+    .log-entry {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+    }
+
+    .method {
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: white;
+      margin-right: 15px;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .method.get {
+      background-color: #61affe;
+    }
+
+    .method.post {
+      background-color: #49cc90;
+    }
+
+    .method.put {
+      background-color: #fca130;
+    }
+
+    .method.delete {
+      background-color: #f93e3e;
+    }
+
+    .url {
+      flex-grow: 1;
+      font-family: monospace;
+      font-size: 1.1em;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .time {
+      color: #888;
+      font-size: 0.9em;
+      white-space: nowrap;
+      margin-left: 10px;
+    }
+
+    .log-details {
+      margin-top: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: #555;
+      font-size: 0.9em;
+    }
+
+    pre {
+      background: #f8f8f8;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h1>SuperTracer Logs</h1>
+      <button id="reload" onclick="location.reload()">Refresh</button>
+    </div>
+    <div id="logs">
+      {{ logs_list }}
+    </div>
+  </div>
+</body>
+
+</html>

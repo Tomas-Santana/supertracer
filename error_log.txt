@@ -1,0 +1,16 @@
+Uncaught exception by SuperTracer:
+Traceback (most recent call last):
+  File "c:\Users\tommy\Documents\URU\componentes\watcher\sum.py", line 9, in <module>
+    cause_exception()
+  File "c:\Users\tommy\Documents\URU\componentes\watcher\sum.py", line 7, in cause_exception
+    return 1 / 0  # This will raise a ZeroDivisionError
+           ~~^~~
+ZeroDivisionError: division by zero
+Uncaught exception by SuperTracer:
+Traceback (most recent call last):
+  File "c:\Users\tommy\Documents\URU\componentes\watcher\sum.py", line 9, in <module>
+    cause_exception()
+  File "c:\Users\tommy\Documents\URU\componentes\watcher\sum.py", line 7, in cause_exception
+    return 1 / 0  # This will raise a ZeroDivisionError
+           ~~^~~
+ZeroDivisionError: division by zero
