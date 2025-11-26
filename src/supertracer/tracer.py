@@ -104,11 +104,17 @@ class SuperTracer:
             return html_content.replace("{{ logs_list }}", logs_html)
 
     def _add_nicegui_logs(self):
+        # method filter control (shared state for the page)
+        method_filter = ui.toggle(
+            ['ALL', 'GET', 'POST', 'PUT', 'DELETE'],
+            value='ALL',
+        ).props('dense')
 
-        method_filter = ui.toggle(['ALL', 'GET', 'POST', 'PUT', 'DELETE'], value='ALL')
-
-        # basic CSS to mimic the existing HTML template styling
+        # basic CSS to mimic and enhance the existing HTML template styling
         ui.add_css("""
+        body {
+            background-color: #f4f4f9;
+        }
         .method-chip {
             font-weight: 600;
             padding: 4px 10px;
@@ -122,32 +128,48 @@ class SuperTracer:
         .method-post { background-color: #49cc90; }
         .method-put { background-color: #fca130; }
         .method-delete { background-color: #f93e3e; }
+        .request-headers {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
         """)
 
         @ui.page('/logs')
         def logs_page():
-            # basic css styling
-            ui.query('body').style('background-color: #f4f4f9;')
-            with ui.column().classes('w-full max-w-5xl mx-auto py-6 gap-4'):
+            with ui.column().classes('w-full max-w-6xl mx-auto py-6 gap-4'):
+                # header
                 with ui.row().classes('items-center justify-between w-full'):
-                    ui.label('SuperTracer Logs').classes('text-2xl font-semibold text-gray-800')
-                    ui.button('Refresh', on_click=lambda: ui.run_javascript('location.reload()').props('color=primary unelevated'))
+                    ui.label('SuperTracer Logs').classes('text-3xl font-semibold text-gray-900')
+                    ui.button(
+                        'Refresh',
+                        on_click=lambda: ui.run_javascript('location.reload()'),
+                    ).props('color=primary unelevated icon=refresh')
 
-            rows = self._fetch_logs()
-            for row in rows:
-                # row: id, method, url, timestamp, headers
-                ts_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(row[3]))
-                method = row[1]
-                url = row[2]
-                headers = row[4]
+                # filter bar and simple summary
+                rows = self._fetch_logs()
+                total = len(rows)
+                with ui.row().classes('items-center justify-between w-full'):
+                    with ui.row().classes('items-center gap-3'):
+                        ui.label('Filter by method:').classes('text-sm text-gray-600')
+                        method_filter.classes('bg-white rounded-lg shadow-sm px-2 py-1')
+                    ui.label(f'{total} requests (latest 100)').classes('text-sm text-gray-500')
 
-                if method_filter.value != 'ALL' and method != method_filter.value:
-                    continue
+                # log list
+                for row in rows:
+                    # row: id, method, url, timestamp, headers
+                    ts_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(row[3]))
+                    method = row[1]
+                    url = row[2]
+                    headers = row[4]
 
-                with ui.card().classes('w-full shadow-sm border border-gray-200'):
-                    with ui.row().classes('items-center justify-between w-full'):
-                        ui.label(method).classes(f'method-chip method-{method.lower()}')
-                        ui.label(url).classes('font-mono text-sm break-all text-gray-800 flex-1 mx-4')
-                        ui.label(ts_str).classes('text-gray-500 text-xs whitespace-nowrap')
-                    with ui.expansion('Headers').classes('mt-2'):
-                        ui.code(headers, language='json').classes('w-full text-xs')
+                    if method_filter.value != 'ALL' and method != method_filter.value:
+                        continue
+
+                    with ui.card().classes('w-full shadow-sm border border-gray-200 bg-white'):
+                        with ui.row().classes('items-start justify-between w-full'):
+                            with ui.column().classes('gap-1 max-w-full'):
+                                ui.label(method).classes(f'method-chip method-{method.lower()}')
+                                ui.label(url).classes('font-mono text-sm text-gray-800 break-words max-w-full')
+                            ui.label(ts_str).classes('text-gray-500 text-xs whitespace-nowrap')
+                        with ui.expansion('Headers').classes('mt-2 w-full'):
+                            ui.code(headers, language='json').classes('w-full text-xs request-headers')
