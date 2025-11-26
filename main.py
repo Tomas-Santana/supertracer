@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from nicegui import ui
 from supertracer import SuperTracer
 import uvicorn
 from typing import Optional
@@ -7,7 +8,10 @@ app = FastAPI()
 
 # Initialize SuperTracer
 # This will create 'requests.db' in the current directory and add the /logs endpoint
-tracer = SuperTracer(app, db_path="requests.db")
+tracer = SuperTracer(app, db_path="requests.db", use_nicegui=False) # toggle use_nicegui as needed 
+
+# Mount NiceGUI onto this FastAPI app so /logs works
+ui.run_with(app)
 
 @app.get("/")
 def read_root():
