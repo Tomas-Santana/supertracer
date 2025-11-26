@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from supertracer import SuperTracer
+from src.supertracer import SuperTracer
 import uvicorn
 from typing import Optional
 
