@@ -104,6 +104,9 @@ class SuperTracer:
             return html_content.replace("{{ logs_list }}", logs_html)
 
     def _add_nicegui_logs(self):
+
+        method_filter = ui.toggle(['ALL', 'GET', 'POST', 'PUT', 'DELETE'], value='ALL')
+
         # basic CSS to mimic the existing HTML template styling
         ui.add_css("""
         .method-chip {
@@ -137,6 +140,9 @@ class SuperTracer:
                 method = row[1]
                 url = row[2]
                 headers = row[4]
+
+                if method_filter.value != 'ALL' and method != method_filter.value:
+                    continue
 
                 with ui.card().classes('w-full shadow-sm border border-gray-200'):
                     with ui.row().classes('items-center justify-between w-full'):
