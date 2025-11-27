@@ -7,7 +7,11 @@ authors = [
     { name = "Tomas Santana", email = "tomas.30604530@uru.edu" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.122.0",
+    "nicegui>=3.3.1",
+    "psycopg2>=2.9.11",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.11,<0.10.0"]
