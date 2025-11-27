@@ -1,36 +1,59 @@
-import sqlite3
 import time
 import json
 import os
-from typing import Callable
+import logging
+from typing import Callable, Optional, List, Dict, Any
+from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from nicegui import ui
+from supertracer.connectors.base import BaseConnector
+from supertracer.connectors.sqlite import SQLiteConnector
+from supertracer.types.logs import Log
+from supertracer.types.options import LoggerOptions, SupertracerOptions
+from supertracer.ui.pages.logs_page import render_logs_page
+from supertracer.logger import setup_logger
 
 
 class SuperTracer:
-    def __init__(self, app: FastAPI, db_path: str = "requests.db", use_nicegui: bool = True):
+    def __init__(self, app: FastAPI, connector: Optional[BaseConnector] = None, options: Optional[SupertracerOptions] = None):
         self.app = app
-        self.db_path = db_path
-        self.use_nicegui = use_nicegui
+        self.connector = connector if connector else SQLiteConnector("requests.db")
+        self.options = options if options else {}
+        ui.run_with(self.app, mount_path="/supertracer")
         self._init_db()
         self._add_middleware()
         self._add_routes()
+        
+        # Setup logger for the application
+        self.logger = setup_logger('supertracer', self.connector, 
+                                   level=self.options.get('logger_options', {}).get('level', logging.INFO),
+                                   format_string=self.options.get('logger_options', {}).get('format', '%(levelname)s: %(message)s'))
+    
+    def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
+        """Get a logger instance that saves to the database.
+        
+        Args:
+            name: Logger name (if None, returns the default supertracer logger)
+        
+        Returns:
+            Logger instance configured to save to database
+        
+        Example:
+            >>> tracer = SuperTracer(app)
+            >>> logger = tracer.get_logger('my_module')
+            >>> logger.info("Processing request")
+            >>> logger.error("An error occurred")
+        """
+        if name is None:
+            return self.logger
+        return setup_logger(name, self.connector, 
+                            level=options.get('level', logging.INFO) if options else logging.INFO,
+                            format_string=options.get('format') if options else '%(levelname)s: %(message)s')
 
     def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                method TEXT,
-                url TEXT,
-                headers TEXT,
-                timestamp REAL
-            )
-        """)
-        conn.commit()
-        conn.close()
+        self.connector.connect()
+        self.connector.init_db()
 
     def _add_middleware(self):
         @self.app.middleware("http")
@@ -38,138 +61,71 @@ class SuperTracer:
             # Capture request details
             method = request.method
             url = str(request.url)
-            # Convert headers to a serializable format
-            headers = json.dumps(dict(request.headers))
-            timestamp = time.time()
+            headers = dict(request.headers)
+            start_time = time.time()
 
-            # Save to DB (synchronously for simplicity in this example, 
+            # Process the request
+            response = await call_next(request)
+            
+            # Calculate duration
+            duration_ms = int((time.time() - start_time) * 1000)
+
+            # Save to DB after processing
             try:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO requests (method, url, headers, timestamp) VALUES (?, ?, ?, ?)",
-                    (method, url, headers, timestamp)
-                )
-                conn.commit()
-                conn.close()
+                log: Log = {
+                    'id': 0,  # Will be auto-generated
+                    'content': f"{method} {url}",
+                    'timestamp': datetime.now(),
+                    'method': method,
+                    'url': url,
+                    'headers': headers,
+                    'log_level': 'HTTP',
+                    'status_code': response.status_code,
+                    'duration_ms': duration_ms
+                }
+                self.connector.save_log(log)
             except Exception as e:
                 print(f"SuperTracer Error: {e}")
 
-            response = await call_next(request)
             return response
 
     def _add_routes(self):
-        if self.use_nicegui:
-            self._add_nicegui_logs()
-        else:
-            self._add_html_logs()
+        self._add_nicegui_logs()
 
-    def _fetch_logs(self):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, method, url, timestamp, headers FROM requests ORDER BY id DESC LIMIT 100")
-        rows = cursor.fetchall()
-        conn.close()
-        return rows
-
-    def _add_html_logs(self):
-        @self.app.get("/logs", response_class=HTMLResponse)
-        def get_logs():
-            rows = self._fetch_logs()
-
-            logs_html = ""
-            for row in rows:
-                # row: id, method, url, timestamp, headers
-                ts_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(row[3]))
-                logs_html += f"""
-                <div class="log-entry">
-                    <div class="log-header">
-                        <span class="method {row[1].lower()}">{row[1]}</span>
-                        <span class="url">{row[2]}</span>
-                        <span class="time">{ts_str}</span>
-                    </div>
-                    <div class="log-details">
-                        <details>
-                            <summary>Headers</summary>
-                            <pre>{row[4]}</pre>
-                        </details>
-                    </div>
-                </div>
-                """
-
-            template_path = os.path.join(os.path.dirname(__file__), "templates", "logs.html")
-            with open(template_path, "r", encoding="utf-8") as f:
-                html_content = f.read()
-
-            return html_content.replace("{{ logs_list }}", logs_html)
+    def _fetch_logs(self) -> List[Dict[str, Any]]:
+        """Fetch logs and convert to UI-friendly format."""
+        logs = self.connector.fetch_logs(limit=100)
+        
+        # Sample data for demonstration - replace with real mapping
+        log_types = ['INFO', 'HTTP', 'WARN', 'ERROR', 'DEBUG']
+        status_codes = [200, 404, 500]
+        
+        formatted_logs = []
+        for i, log in enumerate(logs):
+            # Extract endpoint path from URL
+            endpoint = None
+            if log.get('url'):
+                from urllib.parse import urlparse
+                parsed = urlparse(log.get('url'))
+                endpoint = parsed.path or '/'
+            
+            formatted_log = {
+                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                'type': log.get('log_level') or ('HTTP' if log.get('method') else log_types[i % len(log_types)]),
+                'details': log['content'],
+                'method': log.get('method'),
+                'endpoint': endpoint,
+                'status_code': log.get('status_code') or 200,
+                'duration': f"{log.get('duration_ms') or (i * 15) % 1000}ms"
+            }
+            formatted_logs.append(formatted_log)
+        
+        return formatted_logs
 
     def _add_nicegui_logs(self):
-        # method filter control (shared state for the page)
-        method_filter = ui.toggle(
-            ['ALL', 'GET', 'POST', 'PUT', 'DELETE'],
-            value='ALL',
-        ).props('dense')
-
-        # basic CSS to mimic and enhance the existing HTML template styling
-        ui.add_css("""
-        body {
-            background-color: #f4f4f9;
-        }
-        .method-chip {
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 999px;
-            color: white;
-            min-width: 60px;
-            text-align: center;
-            font-size: 0.75rem;
-        }
-        .method-get { background-color: #61affe; }
-        .method-post { background-color: #49cc90; }
-        .method-put { background-color: #fca130; }
-        .method-delete { background-color: #f93e3e; }
-        .request-headers {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        """)
-
+        """Add the /logs route with the new modular UI."""
+        # Add dark theme CSS
         @ui.page('/logs')
         def logs_page():
-            with ui.column().classes('w-full max-w-6xl mx-auto py-6 gap-4'):
-                # header
-                with ui.row().classes('items-center justify-between w-full'):
-                    ui.label('SuperTracer Logs').classes('text-3xl font-semibold text-gray-900')
-                    ui.button(
-                        'Refresh',
-                        on_click=lambda: ui.run_javascript('location.reload()'),
-                    ).props('color=primary unelevated icon=refresh')
-
-                # filter bar and simple summary
-                rows = self._fetch_logs()
-                total = len(rows)
-                with ui.row().classes('items-center justify-between w-full'):
-                    with ui.row().classes('items-center gap-3'):
-                        ui.label('Filter by method:').classes('text-sm text-gray-600')
-                        method_filter.classes('bg-white rounded-lg shadow-sm px-2 py-1')
-                    ui.label(f'{total} requests (latest 100)').classes('text-sm text-gray-500')
-
-                # log list
-                for row in rows:
-                    # row: id, method, url, timestamp, headers
-                    ts_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(row[3]))
-                    method = row[1]
-                    url = row[2]
-                    headers = row[4]
-
-                    if method_filter.value != 'ALL' and method != method_filter.value:
-                        continue
-
-                    with ui.card().classes('w-full shadow-sm border border-gray-200 bg-white'):
-                        with ui.row().classes('items-start justify-between w-full'):
-                            with ui.column().classes('gap-1 max-w-full'):
-                                ui.label(method).classes(f'method-chip method-{method.lower()}')
-                                ui.label(url).classes('font-mono text-sm text-gray-800 break-words max-w-full')
-                            ui.label(ts_str).classes('text-gray-500 text-xs whitespace-nowrap')
-                        with ui.expansion('Headers').classes('mt-2 w-full'):
-                            ui.code(headers, language='json').classes('w-full text-xs request-headers')
+            logs_data = self._fetch_logs()
+            render_logs_page(logs_data)
