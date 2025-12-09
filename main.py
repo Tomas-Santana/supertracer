@@ -20,6 +20,13 @@ def read_root():
     logger.info("Root endpoint accessed")
     logger.error("An error occurred at root endpoint")
     logger.warning("This is a warning at root endpoint")
-    return {"Hello": "World", "message": "Visit /logs to see the requests!"}
+    return {"Hello": "World", "message": "Visit supertracer/logs to see the requests!"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Run the app
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
 
 
