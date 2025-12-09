@@ -71,7 +71,15 @@ class SQLConnector(BaseConnector):
         )
         self.commit_transaction()
     
-    def fetch_logs(self, limit: int = 100, from_timestamp: datetime = datetime.min) -> List[Log]:
+    def fetch_logs(
+        self, 
+        limit: int = 100, 
+        from_timestamp: datetime = datetime.min,
+        search_text: str = None,
+        endpoint: str = None,
+        status_code: str = None,
+        log_level: str = None
+    ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
         if from_timestamp == datetime.min:
@@ -79,15 +87,42 @@ class SQLConnector(BaseConnector):
         else:
             timestamp_value = from_timestamp.timestamp()
         
-        select_query = """
+        query = """
             SELECT id, content, timestamp, method, url, headers, log_level, status_code, duration_ms
             FROM logs
             WHERE timestamp >= ?
-            ORDER BY id DESC
-            LIMIT ?
         """
+        params = [timestamp_value]
+
+        if search_text:
+            query += " AND content LIKE ?"
+            params.append(f"%{search_text}%")
+            
+        if endpoint:
+            query += " AND url LIKE ?"
+            params.append(f"%{endpoint}%")
+            
+        if status_code:
+            # Handle status code filtering
+            # If it's a specific number, exact match
+            # If it contains wildcards or partial, use LIKE on string cast
+            if status_code.isdigit():
+                 query += " AND status_code = ?"
+                 params.append(int(status_code))
+            else:
+                 # Replace X with % for SQL wildcard if user uses 2XX style
+                 wildcard_status = status_code.replace('X', '%').replace('x', '%')
+                 query += " AND CAST(status_code AS TEXT) LIKE ?"
+                 params.append(f"{wildcard_status}%")
+
+        if log_level and log_level != "All Levels":
+            query += " AND log_level = ?"
+            params.append(log_level)
+
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
         
-        rows = self.query(select_query, (timestamp_value, limit))
+        rows = self.query(query, tuple(params))
         
         logs: List[Log] = []
         for row in rows:

@@ -69,7 +69,15 @@ class PostgreSQLConnector(SQLConnector):
         )
         self.commit_transaction()
     
-    def fetch_logs(self, limit: int = 100, from_timestamp=None):
+    def fetch_logs(
+        self, 
+        limit: int = 100, 
+        from_timestamp=None,
+        search_text: str = None,
+        endpoint: str = None,
+        status_code: str = None,
+        log_level: str = None
+    ):
         """Fetch log entries using PostgreSQL parameterized queries."""
         from datetime import datetime
         import json
@@ -79,15 +87,38 @@ class PostgreSQLConnector(SQLConnector):
             
         timestamp_value = from_timestamp.timestamp()
         
-        select_query = """
+        query = """
             SELECT id, content, timestamp, method, url, headers, log_level, status_code, duration_ms
             FROM logs
             WHERE timestamp >= %s
-            ORDER BY id DESC
-            LIMIT %s
         """
+        params = [timestamp_value]
+
+        if search_text:
+            query += " AND content ILIKE %s"
+            params.append(f"%{search_text}%")
+            
+        if endpoint:
+            query += " AND url ILIKE %s"
+            params.append(f"%{endpoint}%")
+            
+        if status_code:
+            if status_code.isdigit():
+                 query += " AND status_code = %s"
+                 params.append(int(status_code))
+            else:
+                 wildcard_status = status_code.replace('X', '%').replace('x', '%')
+                 query += " AND CAST(status_code AS TEXT) LIKE %s"
+                 params.append(f"{wildcard_status}%")
+
+        if log_level and log_level != "All Levels":
+            query += " AND log_level = %s"
+            params.append(log_level)
+
+        query += " ORDER BY id DESC LIMIT %s"
+        params.append(limit)
         
-        rows = self.query(select_query, (timestamp_value, limit))
+        rows = self.query(query, tuple(params))
         
         logs = []
         for row in rows:
