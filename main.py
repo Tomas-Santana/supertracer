@@ -9,7 +9,8 @@ tracer = SuperTracer(app, options={
     "logger_options": {
         "level": logging.INFO,
         "format": "%(message)s"
-    }
+    },
+    "save_own_traces": False
 })  
 
 logger = tracer.get_logger('supertracer')

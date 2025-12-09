@@ -63,6 +63,11 @@ class SuperTracer:
             url = str(request.url)
             headers = dict(request.headers)
             start_time = time.time()
+            
+            if not self.options.get('save_own_traces', False):
+                # Skip logging if the request is to Supertracer itself
+                if url.startswith(str(request.base_url) + "supertracer"):
+                    return await call_next(request)
 
             # Process the request
             response = await call_next(request)
