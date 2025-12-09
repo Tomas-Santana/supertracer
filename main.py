@@ -22,6 +22,10 @@ def read_root():
     logger.warning("This is a warning at root endpoint")
     return {"Hello": "World", "message": "Visit supertracer/logs to see the requests!"}
 
+@app.post("/hello")
+def say_hello():
+    logger.info("Hello endpoint accessed")
+    return {"message": "Hello from POST endpoint"}
 
 if __name__ == "__main__":
     import uvicorn
