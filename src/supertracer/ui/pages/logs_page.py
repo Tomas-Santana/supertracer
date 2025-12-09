@@ -3,17 +3,24 @@ from typing import List, Dict, Any
 from supertracer.ui.components.search_input import search_input
 from supertracer.ui.components.filter_dropdown import filter_dropdown
 from supertracer.ui.components.log_entry_card import log_entry_card
+from supertracer.ui.components.dashboard.dashboard import Dashboard
+from supertracer.metrics import MetricsService
 
 
-def render_logs_page(logs_data: List[Dict[str, Any]]):
+def render_logs_page(logs_data: List[Dict[str, Any]], metrics_service: MetricsService):
     """Renders the logs page with filters and log entries.
     
     Args:
         logs_data: List of log dictionaries with keys: timestamp, type, details, 
                    method (optional), endpoint (optional), status_code (optional), duration (optional)
+        metrics_service: Service to provide metrics data
     """
     
     with ui.column().classes('w-full min-h-screen bg-gray-900 p-6 gap-6'):
+        # Dashboard Section
+        with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
+            Dashboard(metrics_service)
+
         # Filter section
         with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
             # Filter inputs row
