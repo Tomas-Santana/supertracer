@@ -13,6 +13,7 @@ from supertracer.types.logs import Log
 from supertracer.types.options import LoggerOptions, SupertracerOptions
 from supertracer.ui.pages.logs_page import render_logs_page
 from supertracer.logger import setup_logger
+from supertracer.metrics import MetricsService
 
 
 class SuperTracer:
@@ -20,6 +21,7 @@ class SuperTracer:
         self.app = app
         self.connector = connector if connector else SQLiteConnector("requests.db")
         self.options = options if options else {}
+        self.metrics_service = MetricsService(self.options.get('metrics_options'))
         ui.run_with(self.app, mount_path="/supertracer")
         self._init_db()
         self._add_middleware()
@@ -75,6 +77,15 @@ class SuperTracer:
             # Calculate duration
             duration_ms = int((time.time() - start_time) * 1000)
 
+            # Record metrics
+            self.metrics_service.record_request(
+                method=method,
+                path=request.url.path,
+                status_code=response.status_code,
+                latency_ms=duration_ms,
+                error_msg="Test error"
+            )
+
             # Save to DB after processing
             try:
                 log: Log = {
@@ -101,10 +112,6 @@ class SuperTracer:
         """Fetch logs and convert to UI-friendly format."""
         logs = self.connector.fetch_logs(limit=100)
         
-        # Sample data for demonstration - replace with real mapping
-        log_types = ['INFO', 'HTTP', 'WARN', 'ERROR', 'DEBUG']
-        status_codes = [200, 404, 500]
-        
         formatted_logs = []
         for i, log in enumerate(logs):
             # Extract endpoint path from URL
@@ -116,7 +123,7 @@ class SuperTracer:
             
             formatted_log = {
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
-                'type': log.get('log_level') or ('HTTP' if log.get('method') else log_types[i % len(log_types)]),
+                'type': log.get('log_level') or ('HTTP' if log.get('method') else None),
                 'details': log['content'],
                 'method': log.get('method'),
                 'endpoint': endpoint,
@@ -133,4 +140,4 @@ class SuperTracer:
         @ui.page('/logs')
         def logs_page():
             logs_data = self._fetch_logs()
-            render_logs_page(logs_data)
+            render_logs_page(logs_data, self.metrics_service)
