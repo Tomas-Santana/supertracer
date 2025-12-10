@@ -17,6 +17,9 @@ class FilterState:
         self.end_date = None
         self.start_time = None
         self.end_time = None
+    
+    def reset(self):
+        self.__init__()
 
 def date_picker_input(label: str, bind_target: object, bind_property: str, on_change: Callable):
     with ui.date_input().props('outlined dense dark').classes('w-full').bind_value(bind_target, bind_property).on_value_change(on_change) as date:
@@ -31,7 +34,7 @@ def time_picker_input(label: str, bind_target: object, bind_property: str, on_ch
 def log_filters(state: FilterState, on_change: Callable):
     with ui.card().classes('w-full p-4 bg-gray-900 border border-gray-700 rounded-lg gap-4'):
         # Primary Filters
-        with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap items-center'):
+        with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap items-end'):
             # Search
             with ui.column().classes('flex-[2] min-w-[200px] gap-1'):
                 ui.label('Search Message').classes('text-xs text-gray-400 font-medium')
@@ -50,6 +53,10 @@ def log_filters(state: FilterState, on_change: Callable):
                 ui.label('Response Code').classes('text-xs text-gray-400 font-medium')
                 search_input('e.g., 200, 2X0').bind_value(state, 'status_code').on('change', on_change).classes('w-full')
 
+            # clear Filters Button
+            with ui.column().classes('min-w-[100px] flex justify-end items-end'):
+                ui.button('Clear Filters', on_click=lambda: [state.reset(), on_change()]).props('outlined dark').classes('text-gray-400')
+            
         # Advanced Filters (Expandable)
         with ui.expansion('Advanced Filters', icon='tune').classes('w-full text-gray-400 bg-gray-800/50 rounded-md'):
             with ui.column().classes('w-full gap-4 p-4'):
