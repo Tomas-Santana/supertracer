@@ -4,9 +4,11 @@ from datetime import datetime
 from supertracer.ui.components.dashboard.dashboard import Dashboard
 from supertracer.ui.components.filters import FilterState, log_filters
 from supertracer.ui.components.logs_table import LogsTable
+from supertracer.ui.components.header import page_header
 from supertracer.metrics import MetricsService
 from supertracer.broadcaster import LogBroadcaster
 from supertracer.connectors.base import BaseConnector
+from supertracer.auth_service import AuthService
 from supertracer.types.logs import Log
 
 def format_log_entry(log: Log) -> Dict[str, Any]:
@@ -23,7 +25,7 @@ def format_log_entry(log: Log) -> Dict[str, Any]:
         'error_message': log.get('error_message') or ''
     }
     
-def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster):
+def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster, auth_service: AuthService):
     """Renders the logs page with filters and log entries."""
     
     new_logs_buffer: List[Log] = []
@@ -96,6 +98,9 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
         logs_table.prepend_logs(logs_to_add)
 
     with ui.column().classes('w-full min-h-screen bg-gray-900 p-6 gap-6'):
+        # Header
+        page_header('SuperTracer Logs', auth_service)
+
         # Dashboard Section
         with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
             Dashboard(metrics_service)
