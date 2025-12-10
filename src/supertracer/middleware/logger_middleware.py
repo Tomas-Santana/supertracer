@@ -1,5 +1,6 @@
 from typing import Any, Callable, Optional
-from fastapi import Request, Response, FastAPI
+from fastapi import Request, FastAPI
+from starlette.responses import StreamingResponse
 import time
 from datetime import datetime
 import json
@@ -32,7 +33,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
       user_agent = headers.get('user-agent')
       
       body = None
-      if options.get('capture_request_body', False):
+      if options.get('capture_request_body', True):
           max_size = options.get('max_request_body_size', 1024 * 10)  # 10KB default
           body = await capture_request_body(request, max_size)
 
@@ -44,7 +45,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
               return await call_next(request)
 
       # Process the request
-      response: Optional[Response] = None
+      response: Optional[StreamingResponse] = None
       error_message = None
       stack_trace = None
       status_code = 500
@@ -65,8 +66,15 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
           
           # Capture response details if response exists
           response_headers = dict(response.headers) if response else None
-          response_body = response.body if response and hasattr(response, 'body') else None
-          response_size = len(response_body) if response_body else None
+          response_body = None
+          
+          
+          response_size = response.headers.get('content-length') if response and 'content-length' in response.headers else None
+          if response_size is not None:
+              try:
+                  response_size = int(response_size)
+              except ValueError:
+                  response_size = None
           
           # Record metrics
           metrics_service.record_request(
@@ -75,6 +83,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
               status_code=status_code,
               duration_ms=duration_ms,
               error_msg=error_message
+
           )
 
           # Save to DB after processing
@@ -112,6 +121,7 @@ async def capture_request_body(request: Request, max_size: int) -> Optional[Any]
     """Capture and return the request body if within size limits."""
     try:
         body_bytes = await request.body()
+        print(f"Request body size: {len(body_bytes)} bytes")
         if len(body_bytes) < max_size:
             try:
                 return json.loads(body_bytes)
