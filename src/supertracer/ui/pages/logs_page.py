@@ -7,6 +7,7 @@ from supertracer.ui.components.log_entry_card import log_entry_card
 from supertracer.ui.components.dashboard.dashboard import Dashboard
 from supertracer.metrics import MetricsService
 from supertracer.broadcaster import LogBroadcaster
+from supertracer.connectors.base import BaseConnector
 from supertracer.types.logs import Log
 
 def format_log_entry(log: Log) -> Dict[str, Any]:
@@ -26,7 +27,7 @@ def format_log_entry(log: Log) -> Dict[str, Any]:
         'duration': f"{log.get('duration_ms')}ms"
     }
 
-def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService, broadcaster: LogBroadcaster):
+def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster):
     """Renders the logs page with filters and log entries.
     
     Args:
@@ -90,7 +91,7 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
                 pass
 
         # Fetch logs with current filters
-        logs_data: List[Log] = fetch_logs_func(
+        logs_data: List[Log] = connector.fetch_logs(
             search_text=state.search_text,
             endpoint=state.endpoint,
             status_code=state.status_code,
