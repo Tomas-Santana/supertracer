@@ -19,7 +19,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
         metrics_service: Service to record metrics about requests.
     
     Returns:
-        A FastAPI middleware function.
+        A FastAPI middleware function. yay
     """
     @app.middleware("http")
     async def log_requests(request: Request, call_next: Callable):
@@ -41,7 +41,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
       
       if not options.get('save_own_traces', False):
           # Skip logging if the request is to Supertracer itself
-          if url.startswith(str(request.base_url) + "supertracer"):
+          if url.startswith(str(request.base_url) + "supertracer") and not url.startswith(str(request.base_url) + "supertracer/api"):
               return await call_next(request)
 
       # Process the request

@@ -18,7 +18,11 @@ tracer = SuperTracer(app, options={
     "auth_options": {
         "auth_fn": auth_fn,
     },
-    "save_own_traces": False
+
+    "save_own_traces": False,
+    "api_options": {
+        "api_enabled": True,
+    },
 })  
 
 logger = logging.getLogger('supertracer')

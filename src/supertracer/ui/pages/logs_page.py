@@ -1,6 +1,7 @@
 from nicegui import ui
 from typing import List, Dict, Any
 from datetime import datetime
+from supertracer.types.filters import LogFilters
 from supertracer.ui.components.dashboard.dashboard import Dashboard
 from supertracer.ui.components.filters import FilterState, log_filters
 from supertracer.ui.components.logs_table import LogsTable
@@ -77,8 +78,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
                 pass
 
         # Fetch logs with current filters
-        logs_data: List[Log] = connector.fetch_logs(
-            limit=pagination['limit'],
+        filters = LogFilters(
             search_text=state.search_text,
             endpoint=state.endpoint,
             status_code=state.status_code,
@@ -88,8 +88,12 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
             max_latency=int(state.max_latency) if state.max_latency else None,
             has_error=state.has_error,
             start_date=start_dt,
-            end_date=end_dt
+            end_date=end_dt,
+            limit=pagination['limit'],
+            cursor_id=None
         )
+        
+        logs_data: List[Log] = connector.fetch_logs(filters=filters)
         
         logs_table.set_logs(logs_data)
         
@@ -127,9 +131,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
                     end_dt = datetime.strptime(clean_end, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
             except ValueError: pass
 
-        logs_data: List[Log] = connector.fetch_logs(
-            limit=pagination['limit'],
-            cursor_id=pagination['cursor_id'],
+        filters = LogFilters(
             search_text=state.search_text,
             endpoint=state.endpoint,
             status_code=state.status_code,
@@ -139,8 +141,12 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
             max_latency=int(state.max_latency) if state.max_latency else None,
             has_error=state.has_error,
             start_date=start_dt,
-            end_date=end_dt
+            end_date=end_dt,
+            limit=pagination['limit'],
+            cursor_id=pagination['cursor_id']
         )
+
+        logs_data: List[Log] = connector.fetch_logs(filters=filters)
         
         if logs_data:
             logs_table.append_logs(logs_data)

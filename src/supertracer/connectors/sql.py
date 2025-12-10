@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any, List, Optional
 from supertracer.connectors.base import BaseConnector
 from supertracer.types.logs import Log
+from supertracer.types.filters import LogFilters
 from datetime import datetime
 import json
 
@@ -98,26 +99,15 @@ class SQLConnector(BaseConnector):
     
     def fetch_logs(
         self, 
-        limit: int = 100, 
-        from_timestamp: datetime = datetime.min,
-        search_text: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        status_code: Optional[str] = None,
-        log_level: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        methods: Optional[List[str]] = None,
-        min_latency: Optional[int] = None,
-        max_latency: Optional[int] = None,
-        has_error: bool = False,
-        cursor_id: Optional[int] = None
+        filters: Optional[LogFilters] = None,
     ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
-        if from_timestamp == datetime.min:
+        filters = filters or LogFilters()
+        if filters.start_date == datetime.min:
             timestamp_value = 0.0  # Unix epoch (1970-01-01)
         else:
-            timestamp_value = from_timestamp.timestamp()
+            timestamp_value = filters.start_date.timestamp() if filters and filters.start_date else 0.0
         select_query = """
             SELECT 
                 id, content, timestamp, method, path, url, log_level, status_code, duration_ms, error_message
@@ -126,57 +116,57 @@ class SQLConnector(BaseConnector):
         """
         params: List = [timestamp_value]
 
-        if end_date:
-            select_query += " AND timestamp <= ?"
-            params.append(end_date.timestamp())
+        if filters.end_date:
+            select_query += " AND timestamp < ?"
+            params.append(filters.end_date.timestamp())
 
-        if search_text:
+        if filters.search_text:
             select_query += " AND content LIKE ?"
-            params.append(f"%{search_text}%")
+            params.append(f"%{filters.search_text}%")
             
-        if endpoint:
+        if filters.endpoint:
             select_query += " AND url LIKE ?"
-            params.append(f"%{endpoint}%")
+            params.append(f"%{filters.endpoint}%")
             
-        if status_code:
+        if filters.status_code:
             # Handle status code filtering
             # If it's a specific number, exact match
             # If it contains wildcards or partial, use LIKE on string cast
-            if status_code.isdigit():
+            if filters.status_code.isdigit():
                 select_query += " AND status_code = ?"
-                params.append(int(status_code))
+                params.append(int(filters.status_code))
             else:
                 # Handle 2XX, 4XX etc or partial matches
-                pattern = status_code.replace('X', '_').replace('x', '_')
+                pattern = filters.status_code.replace('X', '_').replace('x', '_')
                 select_query += " AND CAST(status_code AS TEXT) LIKE ?"
                 params.append(pattern)
 
-        if log_level and log_level != 'All Levels':
+        if filters.log_level and filters.log_level != 'All Levels':
             select_query += " AND log_level = ?"
-            params.append(log_level)
+            params.append(filters.log_level)
             
-        if methods:
-            placeholders = ','.join(['?'] * len(methods))
+        if filters.methods:
+            placeholders = ','.join(['?'] * len(filters.methods))
             select_query += f" AND method IN ({placeholders})"
-            params.extend(methods)
+            params.extend(filters.methods)
             
-        if min_latency is not None:
+        if filters.min_latency is not None:
             select_query += " AND duration_ms >= ?"
-            params.append(min_latency)
+            params.append(filters.min_latency)
             
-        if max_latency is not None:
+        if filters.max_latency is not None:
             select_query += " AND duration_ms <= ?"
-            params.append(max_latency)
+            params.append(filters.max_latency)
             
-        if has_error:
+        if filters.has_error:
             select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        if cursor_id is not None:
+        if filters.cursor_id is not None:
             select_query += " AND id < ?"
-            params.append(cursor_id)
+            params.append(filters.cursor_id)
 
         select_query += " ORDER BY id DESC LIMIT ?"
-        params.append(limit)
+        params.append(filters.limit)
         
         rows = self.query(select_query, tuple(params))
         logs: List[Log] = []

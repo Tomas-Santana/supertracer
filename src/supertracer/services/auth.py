@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Optional, Callable
 from nicegui import app, ui
-from supertracer.types.options import AuthOptions
+from supertracer.types.options import ApiOptions, AuthOptions
 
 logger = logging.getLogger("supertracer")
 
@@ -20,10 +20,11 @@ class AuthService:
         api_options: Authentication options for API key access
         
     """
-    def __init__(self, options: Optional[AuthOptions] = None, api_options: Optional[AuthOptions] = None):
+    def __init__(self, options: Optional[AuthOptions] = None, api_options: Optional[ApiOptions] = None):
         self.options = options or {}
         self.api_options = api_options or {}
         self.enabled = self.options.get('auth_enabled', False)
+        print(f"api_options: {self.api_options}")
         self.api_enabled = self.api_options.get('api_enabled', False)
         self._setup_auth_method()
 
