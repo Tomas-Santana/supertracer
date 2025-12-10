@@ -2,3 +2,4 @@ venv/
 pycache/
 *.pyc
 *.db
+.nicegui/
