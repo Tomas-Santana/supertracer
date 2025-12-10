@@ -119,18 +119,12 @@ class SQLConnector(BaseConnector):
             timestamp_value = from_timestamp.timestamp()
         select_query = """
             SELECT 
-                id, content, timestamp, method, path, url, headers, log_level, status_code, duration_ms,
-                client_ip, user_agent, request_query, request_body, response_headers, response_body,
-                response_size_bytes, error_message, stack_trace
+                id, content, timestamp, method, path, url, log_level, status_code, duration_ms, error_message
             FROM requests
             WHERE timestamp >= ?
         """
         params: List = [timestamp_value]
 
-        if start_date:
-            select_query += " AND timestamp >= ?"
-            params.append(start_date.timestamp())
-            
         if end_date:
             select_query += " AND timestamp <= ?"
             params.append(end_date.timestamp())
@@ -176,11 +170,10 @@ class SQLConnector(BaseConnector):
         if has_error:
             select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        select_query += " ORDER BY id DESC LIMIT ?"
+        select_query += " ORDER BY timestamp DESC LIMIT ?"
         params.append(limit)
         
         rows = self.query(select_query, tuple(params))
-        
         logs: List[Log] = []
         for row in rows:
             log: Log = {
@@ -190,22 +183,21 @@ class SQLConnector(BaseConnector):
                 'method': row[3],
                 'path': row[4],
                 'url': row[5],
-                'headers': json.loads(row[6]) if row[6] else None,
-                'log_level': row[7],
-                'status_code': row[8],
-                'duration_ms': row[9],
-                'client_ip': row[10],
-                'user_agent': row[11],
-                'request_query': json.loads(row[12]) if row[12] else None,
-                'request_body': json.loads(row[13]) if row[13] else None,
-                'response_headers': json.loads(row[14]) if row[14] else None,
-                'response_body': json.loads(row[15]) if row[15] else None,
-                'response_size_bytes': row[16],
-                'error_message': row[17],
-                'stack_trace': row[18]
+                'headers': None,
+                'log_level': row[6],
+                'status_code': row[7],
+                'duration_ms': row[8],
+                'client_ip': None,
+                'user_agent': None,
+                'request_query': None,
+                'request_body': None,
+                'response_headers': None,
+                'response_body': None,
+                'response_size_bytes': None,
+                'error_message': None,
+                'stack_trace': None
             }
             logs.append(log)
-        
         return logs
 
     def fetch_log(self, log_id: int) -> Optional[Log]:
