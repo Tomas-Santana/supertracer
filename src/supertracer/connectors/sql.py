@@ -161,7 +161,11 @@ class SQLConnector(BaseConnector):
         if filters.has_error:
             select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        select_query += " ORDER BY timestamp DESC LIMIT ?"
+        if filters.cursor_id is not None:
+            select_query += " AND id < ?"
+            params.append(filters.cursor_id)
+
+        select_query += " ORDER BY id DESC LIMIT ?"
         params.append(filters.limit)
         
         rows = self.query(select_query, tuple(params))

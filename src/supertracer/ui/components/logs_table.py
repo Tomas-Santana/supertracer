@@ -33,6 +33,13 @@ class LogsTable:
             for log in logs:
                 self._render_log_row(log)
 
+    def append_logs(self, logs: List[Log]):
+        if self.list_container is None: return
+        
+        with self.list_container:
+            for log in logs:
+                self._render_log_row(log)
+
     def prepend_logs(self, logs: List[Log]):
         if self.list_container is None: return
         
