@@ -71,7 +71,21 @@ class SQLConnector(BaseConnector):
         )
         self.commit_transaction()
     
-    def fetch_logs(self, limit: int = 100, from_timestamp: datetime = datetime.min) -> List[Log]:
+    def fetch_logs(
+        self, 
+        limit: int = 100, 
+        from_timestamp: datetime = datetime.min,
+        search_text: str = None,
+        endpoint: str = None,
+        status_code: str = None,
+        log_level: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        methods: List[str] = None,
+        min_latency: int = None,
+        max_latency: int = None,
+        has_error: bool = False
+    ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
         if from_timestamp == datetime.min:
@@ -79,15 +93,66 @@ class SQLConnector(BaseConnector):
         else:
             timestamp_value = from_timestamp.timestamp()
         
-        select_query = """
+        query = """
             SELECT id, content, timestamp, method, url, headers, log_level, status_code, duration_ms
             FROM logs
             WHERE timestamp >= ?
-            ORDER BY id DESC
-            LIMIT ?
         """
+        params = [timestamp_value]
+
+        if start_date:
+            query += " AND timestamp >= ?"
+            params.append(start_date.timestamp())
+            
+        if end_date:
+            query += " AND timestamp <= ?"
+            params.append(end_date.timestamp())
+
+        if search_text:
+            query += " AND content LIKE ?"
+            params.append(f"%{search_text}%")
+            
+        if endpoint:
+            query += " AND url LIKE ?"
+            params.append(f"%{endpoint}%")
+            
+        if status_code:
+            # Handle status code filtering
+            # If it's a specific number, exact match
+            # If it contains wildcards or partial, use LIKE on string cast
+            if status_code.isdigit():
+                 query += " AND status_code = ?"
+                 params.append(int(status_code))
+            else:
+                 # Replace X with % for SQL wildcard if user uses 2XX style
+                 wildcard_status = status_code.replace('X', '%').replace('x', '%')
+                 query += " AND CAST(status_code AS TEXT) LIKE ?"
+                 params.append(f"{wildcard_status}%")
+
+        if log_level and log_level != "All Levels":
+            query += " AND log_level = ?"
+            params.append(log_level)
+
+        if methods and len(methods) > 0:
+            placeholders = ','.join(['?'] * len(methods))
+            query += f" AND method IN ({placeholders})"
+            params.extend(methods)
+
+        if min_latency is not None:
+            query += " AND duration_ms >= ?"
+            params.append(min_latency)
+
+        if max_latency is not None:
+            query += " AND duration_ms <= ?"
+            params.append(max_latency)
+
+        if has_error:
+            query += " AND status_code >= 400"
+
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
         
-        rows = self.query(select_query, (timestamp_value, limit))
+        rows = self.query(query, tuple(params))
         
         logs: List[Log] = []
         for row in rows:
