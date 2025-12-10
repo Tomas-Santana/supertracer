@@ -25,11 +25,12 @@ class SuperTracer:
         self._init_db()
         self._add_middleware()
         self._add_routes()
-        
-        # Setup logger for the application
-        self.logger = setup_logger('supertracer', self.connector, self.broadcaster,
+                
+        self.logger = setup_logger('supertracer', 
+                                   self.connector, 
+                                   self.broadcaster,
                                    level=self.options.get('logger_options', {}).get('level', logging.INFO),
-                                   format_string=self.options.get('logger_options', {}).get('format', '%(levelname)s: %(message)s'))
+                                   format_string=self.options.get('logger_options', {}).get('format', '%(message)s'))
     
     def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
         """Get a logger instance that saves to the database.
@@ -46,7 +47,7 @@ class SuperTracer:
             >>> logger.info("Processing request")
             >>> logger.error("An error occurred")
         """
-        if name is None:
+        if name is None or name == 'supertracer':
             return self.logger
         return setup_logger(name, self.connector, self.broadcaster,
                             level=options.get('level', logging.INFO) if options else logging.INFO,

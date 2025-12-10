@@ -51,7 +51,8 @@ class DatabaseHandler(logging.Handler):
                 'stack_trace': None
             }
             
-            self.connector.save_log(log)
+            log_id = self.connector.save_log(log)
+            log['id'] = log_id
             if self.broadcaster:
                 self.broadcaster.broadcast(log)
         except Exception:
@@ -91,8 +92,6 @@ def setup_logger(
     db_handler = DatabaseHandler(connector, broadcaster)
     
     # Set formatter
-    if format_string is None:
-        format_string = '%(levelname)s: %(message)s'
     formatter = logging.Formatter(format_string)
     db_handler.setFormatter(formatter)
     
