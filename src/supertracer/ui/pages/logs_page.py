@@ -42,9 +42,15 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
     # State for filters
     state = FilterState()
     logs_table = LogsTable()
-
+    
+    # Pagination state
+    pagination = {'cursor_id': None, 'limit': 50}
+    load_more_container = None
 
     def refresh_logs(e=None):
+        # Reset pagination
+        pagination['cursor_id'] = None
+        
         # Parse dates if present
         start_dt = None
         end_dt = None
@@ -72,6 +78,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
 
         # Fetch logs with current filters
         logs_data: List[Log] = connector.fetch_logs(
+            limit=pagination['limit'],
             search_text=state.search_text,
             endpoint=state.endpoint,
             status_code=state.status_code,
@@ -85,6 +92,65 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
         )
         
         logs_table.set_logs(logs_data)
+        
+        # Update cursor and button visibility
+        if logs_data:
+            pagination['cursor_id'] = logs_data[-1]['id']
+            
+        if load_more_container:
+            load_more_container.clear()
+            if len(logs_data) >= pagination['limit']:
+                with load_more_container:
+                    ui.button('Load More', on_click=load_more_logs).classes('w-full bg-gray-800 text-gray-400 hover:bg-gray-700')
+
+    def load_more_logs():
+        if pagination['cursor_id'] is None:
+            return
+
+        # Parse dates (same as refresh_logs)
+        start_dt = None
+        end_dt = None
+        if state.start_date:
+            try:
+                clean_start = state.start_date.replace('/', '-')
+                if state.start_time:
+                    start_dt = datetime.strptime(f"{clean_start} {state.start_time}", '%Y-%m-%d %H:%M')
+                else:
+                    start_dt = datetime.strptime(clean_start, '%Y-%m-%d')
+            except ValueError: pass
+        if state.end_date:
+            try:
+                clean_end = state.end_date.replace('/', '-')
+                if state.end_time:
+                    end_dt = datetime.strptime(f"{clean_end} {state.end_time}", '%Y-%m-%d %H:%M')
+                else:
+                    end_dt = datetime.strptime(clean_end, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            except ValueError: pass
+
+        logs_data: List[Log] = connector.fetch_logs(
+            limit=pagination['limit'],
+            cursor_id=pagination['cursor_id'],
+            search_text=state.search_text,
+            endpoint=state.endpoint,
+            status_code=state.status_code,
+            log_level=state.log_level,
+            methods=state.methods,
+            min_latency=int(state.min_latency) if state.min_latency else None,
+            max_latency=int(state.max_latency) if state.max_latency else None,
+            has_error=state.has_error,
+            start_date=start_dt,
+            end_date=end_dt
+        )
+        
+        if logs_data:
+            logs_table.append_logs(logs_data)
+            pagination['cursor_id'] = logs_data[-1]['id']
+        
+        if load_more_container:
+            load_more_container.clear()
+            if len(logs_data) >= pagination['limit']:
+                with load_more_container:
+                    ui.button('Load More', on_click=load_more_logs).classes('w-full bg-gray-800 text-gray-400 hover:bg-gray-700')
 
     def flush_logs():
         if not new_logs_buffer:
@@ -111,6 +177,9 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
         
         # Logs table section
         logs_table.build()
+        
+        # Load More Button Container
+        load_more_container = ui.row().classes('w-full max-w-7xl mx-auto justify-center pb-6')
         
         # Initial load
         refresh_logs()

@@ -109,7 +109,8 @@ class SQLConnector(BaseConnector):
         methods: Optional[List[str]] = None,
         min_latency: Optional[int] = None,
         max_latency: Optional[int] = None,
-        has_error: bool = False
+        has_error: bool = False,
+        cursor_id: Optional[int] = None
     ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
@@ -170,7 +171,11 @@ class SQLConnector(BaseConnector):
         if has_error:
             select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        select_query += " ORDER BY timestamp DESC LIMIT ?"
+        if cursor_id is not None:
+            select_query += " AND id < ?"
+            params.append(cursor_id)
+
+        select_query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
         
         rows = self.query(select_query, tuple(params))
