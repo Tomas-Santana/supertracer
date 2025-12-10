@@ -76,7 +76,9 @@ class PostgreSQLConnector(SQLConnector):
         search_text: str = None,
         endpoint: str = None,
         status_code: str = None,
-        log_level: str = None
+        log_level: str = None,
+        start_date=None,
+        end_date=None
     ):
         """Fetch log entries using PostgreSQL parameterized queries."""
         from datetime import datetime
@@ -93,6 +95,14 @@ class PostgreSQLConnector(SQLConnector):
             WHERE timestamp >= %s
         """
         params = [timestamp_value]
+
+        if start_date:
+            query += " AND timestamp >= %s"
+            params.append(start_date.timestamp())
+            
+        if end_date:
+            query += " AND timestamp <= %s"
+            params.append(end_date.timestamp())
 
         if search_text:
             query += " AND content ILIKE %s"

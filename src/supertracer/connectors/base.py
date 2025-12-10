@@ -17,7 +17,9 @@ class BaseConnector(ABC):
         search_text: str = None,
         endpoint: str = None,
         status_code: str = None,
-        log_level: str = None
+        log_level: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None
     ) -> List[Log]:
         """Fetch log entries from the connector's storage."""
         pass

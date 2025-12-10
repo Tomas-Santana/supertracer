@@ -78,7 +78,9 @@ class SQLConnector(BaseConnector):
         search_text: str = None,
         endpoint: str = None,
         status_code: str = None,
-        log_level: str = None
+        log_level: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None
     ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
@@ -93,6 +95,14 @@ class SQLConnector(BaseConnector):
             WHERE timestamp >= ?
         """
         params = [timestamp_value]
+
+        if start_date:
+            query += " AND timestamp >= ?"
+            params.append(start_date.timestamp())
+            
+        if end_date:
+            query += " AND timestamp <= ?"
+            params.append(end_date.timestamp())
 
         if search_text:
             query += " AND content LIKE ?"
