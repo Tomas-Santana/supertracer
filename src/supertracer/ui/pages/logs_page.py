@@ -1,39 +1,30 @@
 from nicegui import ui
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any
 from datetime import datetime
-from urllib.parse import urlparse
-from supertracer.ui.components.search_input import search_input
-from supertracer.ui.components.log_entry_card import log_entry_card
 from supertracer.ui.components.dashboard.dashboard import Dashboard
+from supertracer.ui.components.filters import FilterState, log_filters
+from supertracer.ui.components.logs_table import LogsTable
 from supertracer.metrics import MetricsService
 from supertracer.broadcaster import LogBroadcaster
 from supertracer.connectors.base import BaseConnector
 from supertracer.types.logs import Log
 
 def format_log_entry(log: Log) -> Dict[str, Any]:
-    endpoint = None
-    if log.get('url'):
-        parsed = urlparse(log.get('url'))
-        endpoint = parsed.path or '/'
-    
+    """Formats a log entry for display in the logs table."""
     return {
         'id': log.get('id'),
-        'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
-        'type': log.get('log_level') or ('HTTP' if log.get('method') else None),
-        'details': log['content'],
-        'method': log.get('method'),
-        'endpoint': endpoint,
-        'status_code': log.get('status_code') or 200,
-        'duration': f"{log.get('duration_ms')}ms"
+        'timestamp': log.get('timestamp').strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
+        'method': log.get('method') or '',
+        'path': log.get('path') or '',
+        'status_code': log.get('status_code') or '',
+        'log_level': log.get('log_level') or '',
+        'duration_ms': log.get('duration_ms') or '',
+        'client_ip': log.get('client_ip') or '',
+        'error_message': log.get('error_message') or ''
     }
-
-def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster):
-    """Renders the logs page with filters and log entries.
     
-    Args:
-        fetch_logs_func: Function to fetch logs, accepts filter kwargs.
-        metrics_service: Service to provide metrics data
-    """
+def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster):
+    """Renders the logs page with filters and log entries."""
     
     new_logs_buffer: List[Log] = []
 
@@ -47,46 +38,33 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
     ui.context.client.on_disconnect(lambda: broadcaster.unsubscribe(handle_new_log))
     
     # State for filters
-    class FilterState:
-        def __init__(self):
-            self.search_text = ''
-            self.endpoint = ''
-            self.status_code = ''
-            self.log_level = 'All Levels'
-            self.methods = []
-            self.min_latency = None
-            self.max_latency = None
-            self.has_error = False
-            self.start_date = None
-            self.end_date = None
-            
     state = FilterState()
-    
-    logs_container_ref = None
+    logs_table = LogsTable()
+
 
     def refresh_logs(e=None):
-        logs_list_refreshable.refresh()
-
-    @ui.refreshable
-    def logs_list_refreshable():
         # Parse dates if present
         start_dt = None
         end_dt = None
         
         if state.start_date:
             try:
-                # Handle potential slash format from ui.date
                 clean_start = state.start_date.replace('/', '-')
-                start_dt = datetime.strptime(clean_start, '%Y-%m-%d')
+                if state.start_time:
+                    start_dt = datetime.strptime(f"{clean_start} {state.start_time}", '%Y-%m-%d %H:%M')
+                else:
+                    start_dt = datetime.strptime(clean_start, '%Y-%m-%d')
             except ValueError:
                 pass
                 
         if state.end_date:
             try:
-                # Handle potential slash format from ui.date
                 clean_end = state.end_date.replace('/', '-')
-                # Set end date to end of day
-                end_dt = datetime.strptime(clean_end, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+                if state.end_time:
+                    end_dt = datetime.strptime(f"{clean_end} {state.end_time}", '%Y-%m-%d %H:%M')
+                else:
+                    # Set end date to end of day if no time specified
+                    end_dt = datetime.strptime(clean_end, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
             except ValueError:
                 pass
 
@@ -104,117 +82,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
             end_date=end_dt
         )
         
-        # Log entries
-        with ui.column().classes('w-full gap-0') as container:
-            # Store reference to container for real-time updates if needed, 
-            # but since this is refreshable, the container is recreated on refresh.
-            # We need a stable reference for flush_logs? 
-            # No, flush_logs should probably just refresh the list if we want to be correct with filters.
-            # But for performance, we want to append.
-            # Let's assign to a global/non-local variable?
-            nonlocal logs_container_ref
-            logs_container_ref = container
-
-            if not logs_data:
-                with ui.row().classes('w-full justify-center p-4'):
-                    ui.label('No logs found matching criteria').classes('text-gray-500')
-            
-            for log in logs_data:
-                formatted = format_log_entry(log)
-                log_entry_card(
-                    timestamp=formatted.get('timestamp', ''),
-                    log_type=formatted.get('type', 'INFO'),
-                    details=formatted.get('details', ''),
-                    log_id=formatted.get('id'),
-                    method=formatted.get('method'),
-                    endpoint=formatted.get('endpoint'),
-                    status_code=formatted.get('status_code'),
-                    duration=formatted.get('duration')
-                )
-
-    with ui.column().classes('w-full min-h-screen bg-gray-900 p-6 gap-6'):
-        # Dashboard Section
-        with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
-            Dashboard(metrics_service)
-
-        # Filter section
-        with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
-            # Filter inputs row
-            with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap'):
-                # Search message
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('Search Message').classes('text-sm text-gray-400 font-medium')
-                    search_input('e.g., User authenticated').bind_value(state, 'search_text').on('change', refresh_logs)
-                
-                # Filter by endpoint
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('Filter by Endpoint').classes('text-sm text-gray-400 font-medium')
-                    search_input('e.g., /api/users').bind_value(state, 'endpoint').on('change', refresh_logs)
-                    
-                # Filter by response code
-                with ui.column().classes('flex-1 min-w-[150px] gap-2'):
-                    ui.label('Response code').classes('text-sm text-gray-400 font-medium')
-                    search_input('e.g., 200, 2X0').bind_value(state, 'status_code').on('change', refresh_logs)
-                
-                # Filter by log level
-                with ui.column().classes('flex-1 min-w-[150px] gap-2'):
-                    ui.label('Log Level').classes('text-sm text-gray-400 font-medium')
-                    ui.select(
-                        options=['All Levels', 'INFO', 'HTTP', 'WARN', 'ERROR', 'DEBUG'], 
-                        value='All Levels'
-                    ).classes('w-full').props('outlined dense dark').bind_value(state, 'log_level').on_value_change(refresh_logs)
-
-                # Filter by HTTP Method
-                with ui.column().classes('flex-1 min-w-[150px] gap-2'):
-                    ui.label('HTTP Method').classes('text-sm text-gray-400 font-medium')
-                    ui.select(
-                        options=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-                        multiple=True
-                    ).classes('w-full').props('outlined dense dark use-chips').bind_value(state, 'methods').on_value_change(refresh_logs)
-
-            # Latency filters row
-            with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap'):
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('Min Latency (ms)').classes('text-sm text-gray-400 font-medium')
-                    ui.number().classes('w-full').props('outlined dense dark').bind_value(state, 'min_latency').on('change', refresh_logs)
-
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('Max Latency (ms)').classes('text-sm text-gray-400 font-medium')
-                    ui.number().classes('w-full').props('outlined dense dark').bind_value(state, 'max_latency').on('change', refresh_logs)
-                
-                # Has Error toggle
-                with ui.column().classes('flex-1 min-w-[150px] gap-2 justify-end pb-2'):
-                    ui.checkbox('Has Error').classes('text-gray-400').bind_value(state, 'has_error').on('change', refresh_logs)
-                
-                # Spacer to align with top row if needed
-                with ui.column().classes('flex-[1]'):
-                    pass
-
-            # Date filters row
-            with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap'):
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('From Date').classes('text-sm text-gray-400 font-medium')
-                    ui.input('YYYY-MM-DD').classes('w-full').props('outlined dense dark').bind_value(state, 'start_date').on('change', refresh_logs)
-
-                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
-                    ui.label('To Date').classes('text-sm text-gray-400 font-medium')
-                    ui.input('YYYY-MM-DD').classes('w-full').props('outlined dense dark').bind_value(state, 'end_date').on('change', refresh_logs)
-                
-                # Spacer to align with top row if needed
-                with ui.column().classes('flex-[2]'):
-                    pass
-            
-        
-        # Logs table section
-        with ui.column().classes('w-full max-w-7xl mx-auto bg-gray-850 rounded-lg border border-gray-700 overflow-hidden gap-0'):
-            # Table header
-            with ui.row().classes('w-full border-b border-gray-700 px-4 py-3'):
-                ui.label('TIMESTAMP').classes('text-gray-400 text-xs font-semibold uppercase min-w-[180px]')
-                ui.label('TYPE').classes('text-gray-400 text-xs font-semibold uppercase min-w-[100px]')
-                ui.label('DETAILS').classes('text-gray-400 text-xs font-semibold uppercase flex-1')
-            
-            # Log entries
-            logs_list_refreshable()
+        logs_table.set_logs(logs_data)
 
     def flush_logs():
         if not new_logs_buffer:
@@ -225,28 +93,22 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
         new_logs_buffer.clear()
         
         # Add new logs to the top
-        if logs_container_ref:
-            with logs_container_ref:
-                for log in reversed(logs_to_add):
-                    formatted = format_log_entry(log)
-                    card = log_entry_card(
-                        timestamp=formatted.get('timestamp', ''),
-                        log_type=formatted.get('type', 'INFO'),
-                        details=formatted.get('details', ''),
-                        log_id=formatted.get('id'),
-                        method=formatted.get('method'),
-                        endpoint=formatted.get('endpoint'),
-                        status_code=formatted.get('status_code'),
-                        duration=formatted.get('duration')
-                    )
-                    card.move(target_index=0)
-                
-        if logs_container_ref and len(logs_container_ref.default_slot.children) > 200:
-            # This is a bit hacky in NiceGUI to remove from end, but for now let's just keep it simple
-            # or we can clear and re-render if it gets too big, but that defeats the purpose.
-            # Ideally we remove the last child.
-            # logs_container.remove(logs_container.default_slot.children[-1])
-            pass
+        logs_table.prepend_logs(logs_to_add)
+
+    with ui.column().classes('w-full min-h-screen bg-gray-900 p-6 gap-6'):
+        # Dashboard Section
+        with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
+            Dashboard(metrics_service)
+
+        # Filter section
+        with ui.column().classes('w-full max-w-7xl mx-auto gap-4'):
+            log_filters(state, refresh_logs)
+        
+        # Logs table section
+        logs_table.build()
+        
+        # Initial load
+        refresh_logs()
 
     # Timer to flush logs every 500ms
     ui.timer(0.5, flush_logs)
