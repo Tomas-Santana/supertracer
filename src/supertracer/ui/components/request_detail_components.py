@@ -17,20 +17,11 @@ def general_info_card(log: Log):
                     if log.get('method'):
                         http_method_badge(log.get('method') or 'GET')
 
-            # Grid for details
-            with ui.grid(columns=4).classes('w-full gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4'):
-                with ui.column():
-                    ui.label('Request ID').classes('text-sm text-gray-400')
-                    ui.label(str(log.get('id'))).classes('font-mono text-sm')
-                
-                with ui.column():
-                    ui.label('Timestamp').classes('text-sm text-gray-400')
-                    ui.label(str(log.get('timestamp'))).classes('font-mono text-sm')
-                
-                with ui.column().classes('col-span-1 sm:col-span-2'):
-                    ui.label('Full Path').classes('text-sm text-gray-400')
-                    ui.label(str(log.get('url'))).classes('font-mono text-sm truncate w-full')
-
+            # Info Rows
+            _metric_row('Log ID', str(log.get('id') or 'N/A'))
+            _metric_row('Timestamp', str(log.get('timestamp').strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else 'N/A'))
+            _metric_row('Path', log.get('path') or 'N/A')  if log.get('path') else 'N/A'
+            
 def performance_card(log: Log):
     with ui.card().classes('w-full p-6 rounded-xl border border-gray-700 bg-transparent text-white'):
         ui.label('Performance').classes('text-xl font-bold text-gray-400 mb-4')
@@ -44,12 +35,23 @@ def client_info_card(log: Log):
     with ui.card().classes('w-full p-6 rounded-xl border border-gray-700 bg-transparent text-white'):
         ui.label('Client Info').classes('text-xl font-bold text-gray-400 mb-4')
         with ui.column().classes('space-y-3 w-full'):
-            with ui.column():
-                ui.label('IP Address').classes('text-xs text-gray-400')
-                ui.label(str(log.get('client_ip'))).classes('font-mono text-sm')
-            with ui.column():
-                ui.label('User Agent').classes('text-xs text-gray-400')
-                ui.label(str(log.get('user_agent'))).classes('text-sm break-all')
+            _metric_row('Client IP', log.get('client_ip') or 'N/A')
+            _metric_row('User Agent', log.get('user_agent') or 'N/A')
+
+def content_card(content: str):
+    language = 'text'
+    with ui.card().classes('w-full p-6 rounded-xl border border-gray-700 bg-transparent text-white'):
+        ui.label('Content').classes('text-xl font-bold text-gray-400 mb-4')
+        if content:
+            try:
+                parsed = json.loads(content.replace("'", '"'))
+                content = json.dumps(parsed, indent=2)
+                language = 'json'
+            except json.JSONDecodeError:
+                pass
+            ui.code(content, language=language).classes('w-full rounded-lg bg-gray-900 p-4 text-sm overflow-x-auto text-pretty')
+        else:
+            ui.label('No content available').classes('text-sm text-gray-500 italic')
 
 def _metric_row(label: str, value: str):
     with ui.row().classes('w-full justify-between items-baseline'):
@@ -81,7 +83,8 @@ def json_viewer(data: Any):
     ui.code(content, language='json').classes('w-full rounded-lg bg-gray-900 p-4 text-sm overflow-x-auto')
 
 def request_info_section(log: Log):
-    with ui.expansion('Request Info', icon='upload').classes('w-full rounded-xl border border-gray-700 bg-transparent text-white p-2').props('default-opened'):
+    with ui.expansion('Request Info', icon='upload').classes('w-full rounded-xl border border-gray-700 bg-transparent text-white p-2') as exp:
+        exp.value = True  # Default to opened
         with ui.column().classes('w-full gap-6 p-4'):
             with ui.column().classes('w-full'):
                 ui.label('Request Headers').classes('mb-2 text-base font-semibold text-gray-300')
@@ -97,7 +100,7 @@ def request_info_section(log: Log):
                     json_viewer(log.get('request_body'))
 
 def response_info_section(log: Log):
-    is_error = log.get('status_code', 200) >= 400 # type: ignore
+    is_error = (log.get('status_code') or 200) >= 400
     border_color = 'red-500/50' if is_error else 'gray-700'
     bg_color = 'red-900/20' if is_error else 'transparent'
     
