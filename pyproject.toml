@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "Tomas Santana", email = "tomas.30604530@uru.edu" }
+    { name = "Tomas Santana", email = "tomas.30604530@uru.edu" },
+    { name = "Sebastián Cohen", email = "sebastian.cohen@uru.edu" }
 ]
 requires-python = ">=3.12"
 dependencies = [
