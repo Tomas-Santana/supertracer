@@ -100,15 +100,15 @@ class SQLConnector(BaseConnector):
         self, 
         limit: int = 100, 
         from_timestamp: datetime = datetime.min,
-        search_text: str = None,
-        endpoint: str = None,
-        status_code: str = None,
-        log_level: str = None,
-        start_date: datetime = None,
-        end_date: datetime = None,
-        methods: List[str] = None,
-        min_latency: int = None,
-        max_latency: int = None,
+        search_text: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        status_code: Optional[str] = None,
+        log_level: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        methods: Optional[List[str]] = None,
+        min_latency: Optional[int] = None,
+        max_latency: Optional[int] = None,
         has_error: bool = False
     ) -> List[Log]:
         """Fetch log entries from the database."""
@@ -125,22 +125,22 @@ class SQLConnector(BaseConnector):
             FROM requests
             WHERE timestamp >= ?
         """
-        params = [timestamp_value]
+        params: List = [timestamp_value]
 
         if start_date:
-            query += " AND timestamp >= ?"
+            select_query += " AND timestamp >= ?"
             params.append(start_date.timestamp())
             
         if end_date:
-            query += " AND timestamp <= ?"
+            select_query += " AND timestamp <= ?"
             params.append(end_date.timestamp())
 
         if search_text:
-            query += " AND content LIKE ?"
+            select_query += " AND content LIKE ?"
             params.append(f"%{search_text}%")
             
         if endpoint:
-            query += " AND url LIKE ?"
+            select_query += " AND url LIKE ?"
             params.append(f"%{endpoint}%")
             
         if status_code:
@@ -148,38 +148,38 @@ class SQLConnector(BaseConnector):
             # If it's a specific number, exact match
             # If it contains wildcards or partial, use LIKE on string cast
             if status_code.isdigit():
-                 query += " AND status_code = ?"
-                 params.append(int(status_code))
+                select_query += " AND status_code = ?"
+                params.append(int(status_code))
             else:
-                 # Replace X with % for SQL wildcard if user uses 2XX style
-                 wildcard_status = status_code.replace('X', '%').replace('x', '%')
-                 query += " AND CAST(status_code AS TEXT) LIKE ?"
-                 params.append(f"{wildcard_status}%")
+                # Handle 2XX, 4XX etc or partial matches
+                pattern = status_code.replace('X', '_').replace('x', '_')
+                select_query += " AND CAST(status_code AS TEXT) LIKE ?"
+                params.append(pattern)
 
-        if log_level and log_level != "All Levels":
-            query += " AND log_level = ?"
+        if log_level and log_level != 'All Levels':
+            select_query += " AND log_level = ?"
             params.append(log_level)
-
-        if methods and len(methods) > 0:
+            
+        if methods:
             placeholders = ','.join(['?'] * len(methods))
-            query += f" AND method IN ({placeholders})"
+            select_query += f" AND method IN ({placeholders})"
             params.extend(methods)
-
+            
         if min_latency is not None:
-            query += " AND duration_ms >= ?"
+            select_query += " AND duration_ms >= ?"
             params.append(min_latency)
-
+            
         if max_latency is not None:
-            query += " AND duration_ms <= ?"
+            select_query += " AND duration_ms <= ?"
             params.append(max_latency)
-
+            
         if has_error:
-            query += " AND status_code >= 400"
+            select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        query += " ORDER BY id DESC LIMIT ?"
+        select_query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)
         
-        rows = self.query(query, tuple(params))
+        rows = self.query(select_query, tuple(params))
         
         logs: List[Log] = []
         for row in rows:
