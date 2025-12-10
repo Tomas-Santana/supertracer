@@ -63,38 +63,12 @@ class SuperTracer:
     def _add_routes(self):
         self._add_nicegui_logs()
 
-    def _fetch_logs(self, **filters) -> List[Dict[str, Any]]:
-        """Fetch logs and convert to UI-friendly format."""
-        logs = self.connector.fetch_logs(limit=100, **filters)
-        
-        formatted_logs = []
-        for i, log in enumerate(logs):
-            # Extract endpoint path from URL
-            endpoint = None
-            if log.get('url'):
-                from urllib.parse import urlparse
-                parsed = urlparse(log.get('url'))
-                endpoint = parsed.path or '/'
-            
-            formatted_log = {
-                'id': log.get('id'),
-                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
-                'type': log.get('log_level') or ('HTTP' if log.get('method') else None),
-                'details': log['content'],
-                'method': log.get('method'),
-                'endpoint': endpoint,
-                'status_code': log.get('status_code') or 200,
-                'duration': f"{log.get('duration_ms') or (i * 15) % 1000}ms"
-            }
-            formatted_logs.append(formatted_log)
-        
-        return formatted_logs
     def _add_nicegui_logs(self):
         """Add the /logs route with the new modular UI."""
         # Add dark theme CSS
         @ui.page('/logs')
         def logs_page():
-            render_logs_page(self._fetch_logs, self.metrics_service, self.broadcaster)
+            render_logs_page(self.connector.fetch_logs, self.metrics_service, self.broadcaster)
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):
