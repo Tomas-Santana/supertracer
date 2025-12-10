@@ -7,22 +7,25 @@ import time
 
 app = FastAPI()
 
+auth_fn = lambda u, p: True
+
 # Initialize SuperTracer
 tracer = SuperTracer(app, options={
     "logger_options": {
         "level": logging.DEBUG,
         "format": "%(message)s"
     },
+    "auth_options": {
+        "auth_fn": auth_fn,
+    },
     "save_own_traces": False
 })  
 
-logger = tracer.get_logger('supertracer')
+logger = logging.getLogger('supertracer')
 
 @app.get("/")
 def read_root():
-    logger.info("Root endpoint accessed")
-    logger.error("An error occurred at root endpoint")
-    logger.warning("This is a warning at root endpoint")
+    logger.warning({"event": "root_accessed"})
     return {"Hello": "World", "message": "Visit supertracer/logs to see the requests!"}
 
 @app.post("/hello")
