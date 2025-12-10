@@ -7,6 +7,7 @@ def log_entry_card(
     timestamp: str,
     log_type: str,
     details: str,
+    log_id: Optional[int] = None,
     method: Optional[str] = None,
     endpoint: Optional[str] = None,
     status_code: Optional[int] = None,
@@ -14,8 +15,11 @@ def log_entry_card(
 ) -> ui.card:
     """Reusable log entry card component."""
     with ui.card().classes(
-        'w-full bg-transparent shadow-none hover:bg-gray-800 border-b border-gray-700 transition-colors duration-200 rounded-none'
+        'w-full bg-transparent shadow-none hover:bg-gray-800 border-b border-gray-700 transition-colors duration-200 rounded-none cursor-pointer'
     ) as card:
+        if log_id is not None:
+            card.on('click', lambda: ui.navigate.to(f'/logs/{log_id}'))
+
         with ui.row().classes('w-full items-start gap-4'):
             # Timestamp column
             ui.label(timestamp).classes('text-gray-500 text-sm font-mono min-w-[180px]')
