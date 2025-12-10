@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Any
 from supertracer.connectors.sql import SQLConnector
 
 
@@ -9,9 +10,11 @@ class SQLiteConnector(SQLConnector):
         super().__init__()
         self.db_path = db_path
         
-    def execute(self, query: str, params: tuple = ()) -> None:
-        """Execute a query without returning results (INSERT, UPDATE, DELETE, DDL)."""
+    def execute(self, query: str, params: tuple = ()) -> Any:
+        """Execute a query (INSERT, UPDATE, DELETE, DDL)."""
         self.cursor.execute(query, params)
+        self.connection.commit()
+        return self.cursor.lastrowid
     
     def query(self, query: str, params: tuple = ()) -> list:
         """Execute a query and return the results (SELECT)."""
