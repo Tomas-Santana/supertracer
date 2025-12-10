@@ -1,5 +1,5 @@
 from nicegui import ui
-
+from http import HTTPStatus
 
 def log_type_badge(log_type: str) -> ui.row:
     """Reusable log type badge component with color coding."""
@@ -55,11 +55,7 @@ def status_code_badge(status_code: int) -> ui.label:
     else:
         color = 'text-gray-500 bg-gray-950'
     
-    status_text = {
-        200: '200 OK',
-        404: '404 Not Found',
-        500: '500 Server Error'
-    }.get(status_code, f'{status_code}')
+    status_text = str(status_code) + " " + (HTTPStatus(status_code).phrase if status_code in HTTPStatus._value2member_map_ else "Unknown")
     
     return ui.label(status_text).classes(
         f'{color} px-4 py-1 rounded-full text-xs font-semibold'
