@@ -68,7 +68,7 @@ class SuperTracer:
         # Add dark theme CSS
         @ui.page('/logs')
         def logs_page():
-            render_logs_page(self.connector.fetch_logs, self.metrics_service, self.broadcaster)
+            render_logs_page(self.connector, self.metrics_service, self.broadcaster)
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):

@@ -14,12 +14,16 @@ class BaseConnector(ABC):
         self, 
         limit: int = 100, 
         from_timestamp: datetime = datetime.min,
-        search_text: str = None,
-        endpoint: str = None,
-        status_code: str = None,
-        log_level: str = None,
-        start_date: datetime = None,
-        end_date: datetime = None
+        search_text: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        status_code: Optional[str] = None,
+        log_level: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        methods: Optional[List[str]] = None,
+        min_latency: Optional[int] = None,
+        max_latency: Optional[int] = None,
+        has_error: bool = False
     ) -> List[Log]:
         """Fetch log entries from the connector's storage."""
         pass
