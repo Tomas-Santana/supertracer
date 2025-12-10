@@ -2,6 +2,7 @@ from typing import TypedDict, List, Optional, Dict
 from datetime import datetime
 
 class MetricRecord(TypedDict):
+    id: int
     timestamp: datetime
     method: str
     path: str
@@ -18,6 +19,7 @@ class SummaryStats(TypedDict):
 class TimelineData(TypedDict, total=False):
     times: List[str]
     counts: List[int]
+    error_counts: List[int]
 
 class PerformanceData(TypedDict, total=False):
     times: List[str]

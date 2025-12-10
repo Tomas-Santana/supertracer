@@ -76,15 +76,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
               except ValueError:
                   response_size = None
           
-          # Record metrics
-          metrics_service.record_request(
-              method=method,
-              path=path,
-              status_code=status_code,
-              duration_ms=duration_ms,
-              error_msg=error_message
 
-          )
 
           # Save to DB after processing
           try:
@@ -112,6 +104,15 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
               log_id = connector.save_log(log)
               log['id'] = log_id
               broadcaster.broadcast(log)
+              
+              metrics_service.record_request(
+                    id=log_id,
+                    method=method,
+                    path=path,
+                    status_code=status_code,
+                    duration_ms=duration_ms,
+                    error_msg=error_message
+                )
           except Exception as e:
               print(f"SuperTracer Error: {e}")
 
@@ -121,7 +122,6 @@ async def capture_request_body(request: Request, max_size: int) -> Optional[Any]
     """Capture and return the request body if within size limits."""
     try:
         body_bytes = await request.body()
-        print(f"Request body size: {len(body_bytes)} bytes")
         if len(body_bytes) < max_size:
             try:
                 return json.loads(body_bytes)

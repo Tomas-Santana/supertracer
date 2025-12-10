@@ -26,12 +26,14 @@ def slow_endpoints_table(data: List[EndpointLatency]):
 
 def recent_errors_list(data: List[MetricRecord]):
     with ui.card().classes('w-full bg-transparent p-0 border border-gray-700 rounded-lg'):
-        ui.label('Recent Errors').classes('text-gray-400 text-xs font-bold uppercase p-3 border-b border-gray-700')
+        ui.label('Last 5 Errors').classes('text-gray-400 text-xs font-bold uppercase p-3 border-b border-gray-700')
         with ui.column().classes('w-full gap-0'):
             if not data:
                 ui.label('No errors').classes('p-3 text-gray-500 text-sm')
             for item in data:
-                with ui.row().classes('w-full items-center gap-2 p-2 border-b border-gray-700/50 hover:bg-gray-700/50'):
+                with ui.row().classes('w-full items-center gap-2 p-2 border-b border-gray-700/50 hover:bg-gray-700/50 cursor-pointer').on('click', lambda log_id=item['id']: ui.navigate.to(f'/logs/{log_id}')):
+                    # click to navigate to log detail
+                    
                     ui.label(str(item['status_code'])).classes('text-red-500 font-bold text-xs min-w-[30px]')
                     with ui.column().classes('flex-1 gap-0 overflow-hidden'):
                         ui.label(f"{item['method']} {item['path']}").classes('text-gray-300 text-xs font-mono truncate w-full')

@@ -70,9 +70,10 @@ def status_distribution_chart(data: StatusDistribution):
     return ui.echart(options).classes('h-64 w-full')
 
 def timeline_chart(data: TimelineData):
-    """Line chart for Requests over time"""
+    """Line chart for Requests over time (with error counts)."""
     options = {
         'tooltip': {'trigger': 'axis'},
+        'legend': {'data': ['Requests', 'Errors'], 'textStyle': {'color': '#ccc'}},
         'grid': {'left': '3%', 'right': '4%', 'bottom': '3%', 'containLabel': True},
         'xAxis': {
             'type': 'category',
@@ -90,9 +91,17 @@ def timeline_chart(data: TimelineData):
                 'name': 'Requests',
                 'type': 'line',
                 'smooth': True,
-                'areaStyle': {'opacity': 0.3, 'color': '#818cf8'},
+                'areaStyle': {'opacity': 0.25, 'color': '#818cf8'},
                 'itemStyle': {'color': '#6366f1'},
                 'data': data.get('counts', [])
+            },
+            {
+                'name': 'Errors',
+                'type': 'line',
+                'smooth': True,
+                'areaStyle': {'opacity': 0.12, 'color': '#f87171'},
+                'itemStyle': {'color': '#ef4444'},
+                'data': data.get('error_counts', [])
             }
         ],
         'backgroundColor': 'transparent',

@@ -17,7 +17,7 @@ class MetricsService:
         
         # In-memory storage
         self.requests_history: Deque[MetricRecord] = deque(maxlen=self.history_limit)
-        self.errors_history: Deque[MetricRecord] = deque(maxlen=100) # Keep last 100 errors
+        self.errors_history: Deque[MetricRecord] = deque(maxlen=5) # Keep last 5 errors
         
         # Aggregated counters (lifetime of the process)
         self.total_requests = 0
@@ -28,13 +28,14 @@ class MetricsService:
         self.endpoint_counts: Counter[str] = Counter()
         self.endpoint_latencies: Dict[str, List[float]] = {}
 
-    def record_request(self, method: str, path: str, status_code: int, duration_ms: float, error_msg: Optional[str] = None):
+    def record_request(self, id: int, method: str, path: str, status_code: int, duration_ms: float, error_msg: Optional[str] = None):
         if not self.enabled:
             return
 
         now = datetime.now()
         
         record: MetricRecord = {
+            "id": id,
             'timestamp': now,
             'method': method,
             'path': path,
@@ -96,26 +97,26 @@ class MetricsService:
         return dist
 
     def get_timeline_data(self) -> TimelineData:
-        # Group requests by minute for the last hour (or based on history)
-        # This is a simplified version for the chart
-        # We will return two lists: timestamps (x-axis) and counts (y-axis)
-        
+        # Group requests (and errors) by minute for the last hour (or based on history)
         if not self.requests_history:
-            return {'times': [], 'counts': []}
+            return {'times': [], 'counts': [], 'error_counts': []}
 
-        # Bucket by minute
         buckets: Dict[str, int] = {}
-        now = datetime.now()
+        error_buckets: Dict[str, int] = {}
+
         for r in self.requests_history:
-            # Round to minute
             ts = r['timestamp'].strftime('%H:%M')
             buckets[ts] = buckets.get(ts, 0) + 1
+            if r['status_code'] >= 400:
+                error_buckets[ts] = error_buckets.get(ts, 0) + 1
+            else:
+                error_buckets.setdefault(ts, 0)
             
-        # Sort by time
         sorted_times = sorted(buckets.keys())
         return {
             'times': sorted_times,
-            'counts': [buckets[t] for t in sorted_times]
+            'counts': [buckets.get(t, 0) for t in sorted_times],
+            'error_counts': [error_buckets.get(t, 0) for t in sorted_times]
         }
 
     def get_performance_data(self) -> PerformanceData:

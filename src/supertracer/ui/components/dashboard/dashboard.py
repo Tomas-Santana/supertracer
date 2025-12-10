@@ -80,6 +80,9 @@ class Dashboard:
         timeline_data = self.metrics.get_timeline_data()
         self.chart_timeline.options['xAxis']['data'] = timeline_data.get('times', [])
         self.chart_timeline.options['series'][0]['data'] = timeline_data.get('counts', [])
+        # Errors per minute series
+        if len(self.chart_timeline.options['series']) > 1:
+            self.chart_timeline.options['series'][1]['data'] = timeline_data.get('error_counts', [])
         self.chart_timeline.update()
 
         perf_data = self.metrics.get_performance_data()
