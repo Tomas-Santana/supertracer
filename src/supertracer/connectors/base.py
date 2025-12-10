@@ -10,7 +10,17 @@ class BaseConnector(ABC):
         pass
 
     @abstractmethod
-    def fetch_logs(self, limit: int = 100, from_timestamp: datetime = datetime.min) -> List[Log]:
+    def fetch_logs(
+        self, 
+        limit: int = 100, 
+        from_timestamp: datetime = datetime.min,
+        search_text: str = None,
+        endpoint: str = None,
+        status_code: str = None,
+        log_level: str = None,
+        start_date: datetime = None,
+        end_date: datetime = None
+    ) -> List[Log]:
         """Fetch log entries from the connector's storage."""
         pass
 

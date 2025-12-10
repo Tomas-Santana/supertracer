@@ -63,9 +63,9 @@ class SuperTracer:
     def _add_routes(self):
         self._add_nicegui_logs()
 
-    def _fetch_logs(self) -> List[Dict[str, Any]]:
+    def _fetch_logs(self, **filters) -> List[Dict[str, Any]]:
         """Fetch logs and convert to UI-friendly format."""
-        logs = self.connector.fetch_logs(limit=100)
+        logs = self.connector.fetch_logs(limit=100, **filters)
         
         formatted_logs = []
         for i, log in enumerate(logs):
@@ -94,8 +94,7 @@ class SuperTracer:
         # Add dark theme CSS
         @ui.page('/logs')
         def logs_page():
-            logs_data = self._fetch_logs()
-            render_logs_page(logs_data, self.metrics_service, self.broadcaster)
+            render_logs_page(self._fetch_logs, self.metrics_service, self.broadcaster)
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):
