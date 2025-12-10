@@ -3,14 +3,16 @@ from typing import Optional
 from datetime import datetime
 from supertracer.connectors.base import BaseConnector
 from supertracer.types.logs import Log
+from supertracer.broadcaster import LogBroadcaster
 
 
 class DatabaseHandler(logging.Handler):
     """Custom logging handler that saves logs to database using a connector."""
     
-    def __init__(self, connector: BaseConnector, level=logging.NOTSET):
+    def __init__(self, connector: BaseConnector, broadcaster: Optional[LogBroadcaster] = None, level=logging.NOTSET):
         super().__init__(level)
         self.connector = connector
+        self.broadcaster = broadcaster
     
     def emit(self, record: logging.LogRecord) -> None:
         """Save log record to database."""
@@ -32,14 +34,26 @@ class DatabaseHandler(logging.Handler):
                 'content': log_entry,
                 'timestamp': datetime.fromtimestamp(record.created),
                 'method': None,
+                'path': None,
                 'url': None,
                 'headers': None,
                 'log_level': level_mapping.get(record.levelno, 'INFO'),
                 'status_code': None,
-                'duration_ms': None
+                'duration_ms': None,
+                'client_ip': None,
+                'user_agent': None,
+                'request_query': None,
+                'request_body': None,
+                'response_headers': None,
+                'response_body': None,
+                'response_size_bytes': None,
+                'error_message': None,
+                'stack_trace': None
             }
             
             self.connector.save_log(log)
+            if self.broadcaster:
+                self.broadcaster.broadcast(log)
         except Exception:
             self.handleError(record)
 
@@ -47,6 +61,7 @@ class DatabaseHandler(logging.Handler):
 def setup_logger(
     name: str,
     connector: BaseConnector,
+    broadcaster: Optional[LogBroadcaster] = None,
     level: int = logging.INFO,
     format_string: Optional[str] = None
 ) -> logging.Logger:
@@ -55,6 +70,7 @@ def setup_logger(
     Args:
         name: Logger name (usually __name__)
         connector: Database connector to use for saving logs
+        broadcaster: Broadcaster to use for real-time updates
         level: Logging level (default: INFO)
         format_string: Custom format string (default: '%(levelname)s: %(message)s')
     
@@ -64,12 +80,15 @@ def setup_logger(
     logger = logging.getLogger(name)
     logger.setLevel(level)
     
-    # Check if already configured to avoid duplicates
-    if logger.handlers:
-        return logger
+    # Remove existing DatabaseHandlers to ensure we use the latest connector/broadcaster
+    # This is crucial when reloading the app (e.g. uvicorn reload) where the logger persists
+    # but the SuperTracer instance (and thus broadcaster) is recreated.
+    for handler in list(logger.handlers):
+        if isinstance(handler, DatabaseHandler):
+            logger.removeHandler(handler)
     
     # Create database handler
-    db_handler = DatabaseHandler(connector)
+    db_handler = DatabaseHandler(connector, broadcaster)
     
     # Set formatter
     if format_string is None:

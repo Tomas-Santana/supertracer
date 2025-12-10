@@ -1,34 +1,33 @@
-import time
-import json
-import os
 import logging
-from typing import Callable, Optional, List, Dict, Any
-from datetime import datetime
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from typing import Optional, List, Dict, Any
+from fastapi import FastAPI
 from nicegui import ui
 from supertracer.connectors.base import BaseConnector
 from supertracer.connectors.sqlite import SQLiteConnector
 from supertracer.types.logs import Log
 from supertracer.types.options import LoggerOptions, SupertracerOptions
 from supertracer.ui.pages.logs_page import render_logs_page
+from supertracer.ui.pages.request_detail_page import render_request_detail_page
 from supertracer.logger import setup_logger
 from supertracer.metrics import MetricsService
+from supertracer.broadcaster import LogBroadcaster
+from supertracer.middleware.logger_middleware import add_logger_middleware
 
 
 class SuperTracer:
     def __init__(self, app: FastAPI, connector: Optional[BaseConnector] = None, options: Optional[SupertracerOptions] = None):
         self.app = app
         self.connector = connector if connector else SQLiteConnector("requests.db")
-        self.options = options if options else {}
+        self.options: SupertracerOptions = options if options else {}
         self.metrics_service = MetricsService(self.options.get('metrics_options'))
+        self.broadcaster = LogBroadcaster()
         ui.run_with(self.app, mount_path="/supertracer")
         self._init_db()
         self._add_middleware()
         self._add_routes()
         
         # Setup logger for the application
-        self.logger = setup_logger('supertracer', self.connector, 
+        self.logger = setup_logger('supertracer', self.connector, self.broadcaster,
                                    level=self.options.get('logger_options', {}).get('level', logging.INFO),
                                    format_string=self.options.get('logger_options', {}).get('format', '%(levelname)s: %(message)s'))
     
@@ -49,7 +48,7 @@ class SuperTracer:
         """
         if name is None:
             return self.logger
-        return setup_logger(name, self.connector, 
+        return setup_logger(name, self.connector, self.broadcaster,
                             level=options.get('level', logging.INFO) if options else logging.INFO,
                             format_string=options.get('format') if options else '%(levelname)s: %(message)s')
 
@@ -58,52 +57,8 @@ class SuperTracer:
         self.connector.init_db()
 
     def _add_middleware(self):
-        @self.app.middleware("http")
-        async def log_requests(request: Request, call_next: Callable):
-            # Capture request details
-            method = request.method
-            url = str(request.url)
-            headers = dict(request.headers)
-            start_time = time.time()
-            
-            if not self.options.get('save_own_traces', False):
-                # Skip logging if the request is to Supertracer itself
-                if url.startswith(str(request.base_url) + "supertracer"):
-                    return await call_next(request)
-
-            # Process the request
-            response = await call_next(request)
-            
-            # Calculate duration
-            duration_ms = int((time.time() - start_time) * 1000)
-
-            # Record metrics
-            self.metrics_service.record_request(
-                method=method,
-                path=request.url.path,
-                status_code=response.status_code,
-                latency_ms=duration_ms,
-                error_msg="Test error"
-            )
-
-            # Save to DB after processing
-            try:
-                log: Log = {
-                    'id': 0,  # Will be auto-generated
-                    'content': f"{method} {url}",
-                    'timestamp': datetime.now(),
-                    'method': method,
-                    'url': url,
-                    'headers': headers,
-                    'log_level': 'HTTP',
-                    'status_code': response.status_code,
-                    'duration_ms': duration_ms
-                }
-                self.connector.save_log(log)
-            except Exception as e:
-                print(f"SuperTracer Error: {e}")
-
-            return response
+        add_logger_middleware(self.options, self.connector, self.broadcaster, self.metrics_service, self.app)
+        
 
     def _add_routes(self):
         self._add_nicegui_logs()
@@ -122,6 +77,7 @@ class SuperTracer:
                 endpoint = parsed.path or '/'
             
             formatted_log = {
+                'id': log.get('id'),
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
                 'type': log.get('log_level') or ('HTTP' if log.get('method') else None),
                 'details': log['content'],
@@ -133,11 +89,14 @@ class SuperTracer:
             formatted_logs.append(formatted_log)
         
         return formatted_logs
-
     def _add_nicegui_logs(self):
         """Add the /logs route with the new modular UI."""
         # Add dark theme CSS
         @ui.page('/logs')
         def logs_page():
             logs_data = self._fetch_logs()
-            render_logs_page(logs_data, self.metrics_service)
+            render_logs_page(logs_data, self.metrics_service, self.broadcaster)
+
+        @ui.page('/logs/{log_id}')
+        def request_detail(log_id: int):
+            render_request_detail_page(log_id, self.connector)
