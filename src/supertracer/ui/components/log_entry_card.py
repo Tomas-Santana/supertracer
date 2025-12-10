@@ -14,10 +14,13 @@ def log_entry_card(
     duration: Optional[str] = None
 ) -> ui.card:
     """Reusable log entry card component."""
+    if len(details) > 200:
+        details = details[:200] + '...'
+    
     with ui.card().classes(
         'w-full bg-transparent shadow-none hover:bg-gray-800 border-b border-gray-700 transition-colors duration-200 rounded-none cursor-pointer'
     ) as card:
-        if log_id is not None:
+        if log_id:
             card.on('click', lambda: ui.navigate.to(f'/logs/{log_id}'))
 
         with ui.row().classes('w-full items-start gap-4'):
@@ -41,6 +44,7 @@ def log_entry_card(
                             ui.label(duration).classes('text-gray-500 text-sm')
                 else:
                     # Regular log style
+                    # handle long details with truncation
                     ui.label(details).classes('text-gray-300 text-sm')
     
     return card
