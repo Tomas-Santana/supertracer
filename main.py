@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from src.supertracer import SuperTracer
 import logging
 import time
@@ -49,14 +49,25 @@ def error_endpoint():
 @app.post("/custom")
 @app.put("/custom")
 @app.delete("/custom")
-def custom_method_endpoint(response: Response, wait: int=0, status: int=200, log_type: Optional[str]=None, log_text: Optional[str]=None):
+def custom_method_endpoint(
+    request: Request, 
+    response: Response, 
+    wait: int=0, 
+    status: int=200, 
+    log_type: Optional[str]=None, 
+    log_text: Optional[str]=None,
+    error: Optional[bool]=False
+):
+    if error:
+        raise ValueError("This is a custom error triggered by the 'error' parameter.")
+    
     logger_method = logger.info
     if log_type == 'error':
         logger_method = logger.error
     elif log_type == 'warning':
         logger_method = logger.warning
 
-    logger_method(f"Custom endpoint accessed with wait={wait}, status={status}, log_type={log_type}, log_text={log_text}")
+    logger_method(log_text or f"Custom endpoint accessed with method {request.method}")
     if wait > 0:
         time.sleep(wait)
         logger_method(f"Waited for {wait} seconds")

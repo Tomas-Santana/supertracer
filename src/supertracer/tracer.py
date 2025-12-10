@@ -11,7 +11,7 @@ from supertracer.ui.pages.request_detail_page import render_request_detail_page
 from supertracer.ui.pages.login_page import render_login_page
 from supertracer.logger import setup_logger
 from supertracer.metrics import MetricsService
-from supertracer.auth_service import AuthService
+from supertracer.auth import AuthService
 from supertracer.broadcaster import LogBroadcaster
 from supertracer.middleware.logger_middleware import add_logger_middleware
 
