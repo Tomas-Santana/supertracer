@@ -34,6 +34,17 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
         metrics_service: Service to provide metrics data
     """
     
+    new_logs_buffer: List[Log] = []
+
+    def handle_new_log(log: Log):
+        new_logs_buffer.append(log)
+
+    # Subscribe to broadcaster
+    broadcaster.subscribe(handle_new_log)
+    
+    # Unsubscribe when client disconnects
+    ui.context.client.on_disconnect(lambda: broadcaster.unsubscribe(handle_new_log))
+    
     # State for filters
     class FilterState:
         def __init__(self):
@@ -50,11 +61,13 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
             
     state = FilterState()
     
+    logs_container_ref = None
+
     def refresh_logs(e=None):
-        logs_container.refresh()
+        logs_list_refreshable.refresh()
 
     @ui.refreshable
-    def logs_container():
+    def logs_list_refreshable():
         # Parse dates if present
         start_dt = None
         end_dt = None
@@ -77,7 +90,7 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
                 pass
 
         # Fetch logs with current filters
-        logs_data = fetch_logs_func(
+        logs_data: List[Log] = fetch_logs_func(
             search_text=state.search_text,
             endpoint=state.endpoint,
             status_code=state.status_code,
@@ -91,20 +104,31 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
         )
         
         # Log entries
-        with ui.column().classes('w-full gap-0'):
+        with ui.column().classes('w-full gap-0') as container:
+            # Store reference to container for real-time updates if needed, 
+            # but since this is refreshable, the container is recreated on refresh.
+            # We need a stable reference for flush_logs? 
+            # No, flush_logs should probably just refresh the list if we want to be correct with filters.
+            # But for performance, we want to append.
+            # Let's assign to a global/non-local variable?
+            nonlocal logs_container_ref
+            logs_container_ref = container
+
             if not logs_data:
                 with ui.row().classes('w-full justify-center p-4'):
                     ui.label('No logs found matching criteria').classes('text-gray-500')
             
             for log in logs_data:
+                formatted = format_log_entry(log)
                 log_entry_card(
-                    timestamp=log.get('timestamp', ''),
-                    log_type=log.get('type', 'INFO'),
-                    details=log.get('details', ''),
-                    method=log.get('method'),
-                    endpoint=log.get('endpoint'),
-                    status_code=log.get('status_code'),
-                    duration=log.get('duration')
+                    timestamp=formatted.get('timestamp', ''),
+                    log_type=formatted.get('type', 'INFO'),
+                    details=formatted.get('details', ''),
+                    log_id=formatted.get('id'),
+                    method=formatted.get('method'),
+                    endpoint=formatted.get('endpoint'),
+                    status_code=formatted.get('status_code'),
+                    duration=formatted.get('duration')
                 )
 
     with ui.column().classes('w-full min-h-screen bg-gray-900 p-6 gap-6'):
@@ -189,21 +213,7 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
                 ui.label('DETAILS').classes('text-gray-400 text-xs font-semibold uppercase flex-1')
             
             # Log entries
-            logs_container = ui.column().classes('w-full gap-0')
-            with logs_container:
-                if not logs_data:
-                    ui.label('No logs available').classes('p-4 text-gray-500 text-sm')
-                for log in logs_data:
-                    log_entry_card(
-                        timestamp=log.get('timestamp', ''),
-                        log_type=log.get('type', 'INFO'),
-                        details=log.get('details', ''),
-                        log_id=log.get('id'),
-                        method=log.get('method'),
-                        endpoint=log.get('endpoint'),
-                        status_code=log.get('status_code'),
-                        duration=log.get('duration')
-                    )
+            logs_list_refreshable()
 
     def flush_logs():
         if not new_logs_buffer:
@@ -214,22 +224,23 @@ def render_logs_page(fetch_logs_func: Callable, metrics_service: MetricsService,
         new_logs_buffer.clear()
         
         # Add new logs to the top
-        with logs_container:
-            for log in reversed(logs_to_add):
-                formatted = format_log_entry(log)
-                card = log_entry_card(
-                    timestamp=formatted.get('timestamp', ''),
-                    log_type=formatted.get('type', 'INFO'),
-                    details=formatted.get('details', ''),
-                    log_id=formatted.get('id'),
-                    method=formatted.get('method'),
-                    endpoint=formatted.get('endpoint'),
-                    status_code=formatted.get('status_code'),
-                    duration=formatted.get('duration')
-                )
-                card.move(target_index=0)
+        if logs_container_ref:
+            with logs_container_ref:
+                for log in reversed(logs_to_add):
+                    formatted = format_log_entry(log)
+                    card = log_entry_card(
+                        timestamp=formatted.get('timestamp', ''),
+                        log_type=formatted.get('type', 'INFO'),
+                        details=formatted.get('details', ''),
+                        log_id=formatted.get('id'),
+                        method=formatted.get('method'),
+                        endpoint=formatted.get('endpoint'),
+                        status_code=formatted.get('status_code'),
+                        duration=formatted.get('duration')
+                    )
+                    card.move(target_index=0)
                 
-        if len(logs_container.default_slot.children) > 200:
+        if logs_container_ref and len(logs_container_ref.default_slot.children) > 200:
             # This is a bit hacky in NiceGUI to remove from end, but for now let's just keep it simple
             # or we can clear and re-render if it gets too big, but that defeats the purpose.
             # Ideally we remove the last child.
