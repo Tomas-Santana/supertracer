@@ -28,7 +28,7 @@ class MetricsService:
         self.endpoint_counts: Counter[str] = Counter()
         self.endpoint_latencies: Dict[str, List[float]] = {}
 
-    def record_request(self, method: str, path: str, status_code: int, latency_ms: float, error_msg: Optional[str] = None):
+    def record_request(self, method: str, path: str, status_code: int, duration_ms: float, error_msg: Optional[str] = None):
         if not self.enabled:
             return
 
@@ -39,7 +39,7 @@ class MetricsService:
             'method': method,
             'path': path,
             'status_code': status_code,
-            'latency_ms': latency_ms,
+            'duration_ms': duration_ms,
             'error_msg': error_msg
         }
         
@@ -49,7 +49,7 @@ class MetricsService:
         self.endpoint_counts[path] += 1
         if path not in self.endpoint_latencies:
             self.endpoint_latencies[path] = []
-        self.endpoint_latencies[path].append(latency_ms)
+        self.endpoint_latencies[path].append(duration_ms)
         # Keep latency history per endpoint limited to avoid memory leak if not using deque there
         # For simplicity, let's just keep last 100 latencies per endpoint for avg calc
         if len(self.endpoint_latencies[path]) > 100:
@@ -128,7 +128,7 @@ class MetricsService:
         
         for r in self.requests_history:
             ts = r['timestamp'].strftime('%H:%M')
-            buckets[ts] = buckets.get(ts, 0) + r['latency_ms']
+            buckets[ts] = buckets.get(ts, 0) + r['duration_ms']
             counts[ts] = counts.get(ts, 0) + 1
             
         sorted_times = sorted(buckets.keys())
