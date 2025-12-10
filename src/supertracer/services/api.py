@@ -48,9 +48,9 @@ class APIService:
             
             # include a next_page_url if there are more logs
             if last_date and filters.limit and len(data) == filters.limit:
-                query = filters.model_dump()
-                query['start_date'] = last_date.isoformat()
-                res['next_page_url'] = request.url._url.split('?')[0] + '?' + '&'.join([f"{key}={value}" for key, value in query.items() if value is not None])
+                query = filters.model_dump(mode='json')
+                query['end_date'] = last_date.isoformat()
+                res['next_page_url'] = str(request.url).split('?')[0] + '?' + '&'.join([f"{key}={value}" for key, value in query.items() if value is not None])
             return res
 
         @self.router.get("/logs/{id}", response_model=Optional[Log])
