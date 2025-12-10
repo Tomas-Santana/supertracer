@@ -80,7 +80,11 @@ class SQLConnector(BaseConnector):
         status_code: str = None,
         log_level: str = None,
         start_date: datetime = None,
-        end_date: datetime = None
+        end_date: datetime = None,
+        methods: List[str] = None,
+        min_latency: int = None,
+        max_latency: int = None,
+        has_error: bool = False
     ) -> List[Log]:
         """Fetch log entries from the database."""
         # Use a safe minimum timestamp (Unix epoch start or later)
@@ -128,6 +132,22 @@ class SQLConnector(BaseConnector):
         if log_level and log_level != "All Levels":
             query += " AND log_level = ?"
             params.append(log_level)
+
+        if methods and len(methods) > 0:
+            placeholders = ','.join(['?'] * len(methods))
+            query += f" AND method IN ({placeholders})"
+            params.extend(methods)
+
+        if min_latency is not None:
+            query += " AND duration_ms >= ?"
+            params.append(min_latency)
+
+        if max_latency is not None:
+            query += " AND duration_ms <= ?"
+            params.append(max_latency)
+
+        if has_error:
+            query += " AND status_code >= 400"
 
         query += " ORDER BY id DESC LIMIT ?"
         params.append(limit)

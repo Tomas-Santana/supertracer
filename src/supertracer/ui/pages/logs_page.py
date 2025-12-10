@@ -19,6 +19,10 @@ def render_logs_page(fetch_logs_func: Callable):
             self.endpoint = ''
             self.status_code = ''
             self.log_level = 'All Levels'
+            self.methods = []
+            self.min_latency = None
+            self.max_latency = None
+            self.has_error = False
             self.start_date = None
             self.end_date = None
             
@@ -56,6 +60,10 @@ def render_logs_page(fetch_logs_func: Callable):
             endpoint=state.endpoint,
             status_code=state.status_code,
             log_level=state.log_level,
+            methods=state.methods,
+            min_latency=int(state.min_latency) if state.min_latency else None,
+            max_latency=int(state.max_latency) if state.max_latency else None,
+            has_error=state.has_error,
             start_date=start_dt,
             end_date=end_dt
         )
@@ -104,6 +112,32 @@ def render_logs_page(fetch_logs_func: Callable):
                         options=['All Levels', 'INFO', 'HTTP', 'WARN', 'ERROR', 'DEBUG'], 
                         value='All Levels'
                     ).classes('w-full').props('outlined dense dark').bind_value(state, 'log_level').on_value_change(refresh_logs)
+
+                # Filter by HTTP Method
+                with ui.column().classes('flex-1 min-w-[150px] gap-2'):
+                    ui.label('HTTP Method').classes('text-sm text-gray-400 font-medium')
+                    ui.select(
+                        options=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+                        multiple=True
+                    ).classes('w-full').props('outlined dense dark use-chips').bind_value(state, 'methods').on_value_change(refresh_logs)
+
+            # Latency filters row
+            with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap'):
+                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
+                    ui.label('Min Latency (ms)').classes('text-sm text-gray-400 font-medium')
+                    ui.number().classes('w-full').props('outlined dense dark').bind_value(state, 'min_latency').on('change', refresh_logs)
+
+                with ui.column().classes('flex-1 min-w-[200px] gap-2'):
+                    ui.label('Max Latency (ms)').classes('text-sm text-gray-400 font-medium')
+                    ui.number().classes('w-full').props('outlined dense dark').bind_value(state, 'max_latency').on('change', refresh_logs)
+                
+                # Has Error toggle
+                with ui.column().classes('flex-1 min-w-[150px] gap-2 justify-end pb-2'):
+                    ui.checkbox('Has Error').classes('text-gray-400').bind_value(state, 'has_error').on('change', refresh_logs)
+                
+                # Spacer to align with top row if needed
+                with ui.column().classes('flex-[1]'):
+                    pass
 
             # Date filters row
             with ui.row().classes('w-full gap-4 flex-wrap md:flex-nowrap'):
