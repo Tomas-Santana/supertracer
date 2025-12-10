@@ -8,8 +8,10 @@ from supertracer.types.logs import Log
 from supertracer.types.options import LoggerOptions, SupertracerOptions
 from supertracer.ui.pages.logs_page import render_logs_page
 from supertracer.ui.pages.request_detail_page import render_request_detail_page
+from supertracer.ui.pages.login_page import render_login_page
 from supertracer.logger import setup_logger
 from supertracer.metrics import MetricsService
+from supertracer.auth_service import AuthService
 from supertracer.broadcaster import LogBroadcaster
 from supertracer.middleware.logger_middleware import add_logger_middleware
 
@@ -20,8 +22,12 @@ class SuperTracer:
         self.connector = connector if connector else SQLiteConnector("requests.db")
         self.options: SupertracerOptions = options if options else {}
         self.metrics_service = MetricsService(self.options.get('metrics_options'))
+        self.auth_service = AuthService(self.options.get('auth_options'))
         self.broadcaster = LogBroadcaster()
-        ui.run_with(self.app, mount_path="/supertracer")
+        
+        # storage_secret is required for app.storage.user (session)
+        ui.run_with(self.app, mount_path="/supertracer", storage_secret='supertracer_secret_key')
+        
         self._init_db()
         self._add_middleware()
         self._add_routes()
@@ -66,11 +72,24 @@ class SuperTracer:
 
     def _add_nicegui_logs(self):
         """Add the /logs route with the new modular UI."""
-        # Add dark theme CSS
+        
+        @ui.page('/login')
+        def login_page():
+            if self.auth_service.is_authenticated():
+                ui.navigate.to('/logs')
+                return
+            render_login_page(self.auth_service)
+
         @ui.page('/logs')
         def logs_page():
-            render_logs_page(self.connector, self.metrics_service, self.broadcaster)
+            if not self.auth_service.is_authenticated():
+                ui.navigate.to('/login')
+                return
+            render_logs_page(self.connector, self.metrics_service, self.broadcaster, self.auth_service)
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):
-            render_request_detail_page(log_id, self.connector)
+            if not self.auth_service.is_authenticated():
+                ui.navigate.to('/login')
+                return
+            render_request_detail_page(log_id, self.connector, self.auth_service)
