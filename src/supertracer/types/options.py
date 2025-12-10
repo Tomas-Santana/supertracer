@@ -11,11 +11,18 @@ class MetricsOptions(TypedDict, total=False):
     refresh_interval: float  # Dashboard refresh interval in seconds
 
 class AuthOptions(TypedDict, total=False):
+    auth_enabled: bool
     username: str
     password: str
     username_env: str
     password_env: str
     auth_fn: Callable[[str, str], bool]
+
+class ApiOptions(TypedDict, total=False):
+    api_enabled: bool
+    api_key: str
+    api_key_env: str
+    api_auth_fn: Callable[[str], bool]
 
 class SupertracerOptions(TypedDict, total=False):
     logger_options: LoggerOptions  # Options for configuring the logger
