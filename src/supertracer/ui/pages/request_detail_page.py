@@ -1,6 +1,6 @@
 from nicegui import ui
 from supertracer.connectors.base import BaseConnector
-from supertracer.auth_service import AuthService
+from supertracer.auth import AuthService
 from supertracer.ui.components.header import page_header
 from supertracer.ui.components.request_detail_components import (
     content_card, general_info_card, performance_card, client_info_card,

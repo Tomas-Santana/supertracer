@@ -8,7 +8,7 @@ from supertracer.ui.components.header import page_header
 from supertracer.metrics import MetricsService
 from supertracer.broadcaster import LogBroadcaster
 from supertracer.connectors.base import BaseConnector
-from supertracer.auth_service import AuthService
+from supertracer.auth import AuthService
 from supertracer.types.logs import Log
 
 def format_log_entry(log: Log) -> Dict[str, Any]:
