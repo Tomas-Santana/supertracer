@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 from supertracer.connectors.base import BaseConnector
 from supertracer.types.logs import Log
-from supertracer.broadcaster import LogBroadcaster
+from supertracer.services.broadcaster import LogBroadcaster
 
 
 class DatabaseHandler(logging.Handler):

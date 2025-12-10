@@ -5,10 +5,10 @@ from supertracer.ui.components.dashboard.dashboard import Dashboard
 from supertracer.ui.components.filters import FilterState, log_filters
 from supertracer.ui.components.logs_table import LogsTable
 from supertracer.ui.components.header import page_header
-from supertracer.metrics import MetricsService
-from supertracer.broadcaster import LogBroadcaster
+from supertracer.services.metrics import MetricsService
+from supertracer.services.broadcaster import LogBroadcaster
 from supertracer.connectors.base import BaseConnector
-from supertracer.auth import AuthService
+from supertracer.services.auth import AuthService
 from supertracer.types.logs import Log
 
 def format_log_entry(log: Log) -> Dict[str, Any]:

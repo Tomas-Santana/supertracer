@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 from supertracer.types.options import SupertracerOptions
 from supertracer.types.logs import Log
-from supertracer.metrics import MetricsService
+from supertracer.services.metrics import MetricsService
 import traceback
 
 def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, metrics_service: MetricsService, app: FastAPI) -> None:

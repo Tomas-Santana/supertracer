@@ -1,5 +1,5 @@
 from nicegui import ui
-from supertracer.metrics import MetricsService
+from supertracer.services.metrics import MetricsService
 from supertracer.ui.components.dashboard.summary_cards import summary_card
 from supertracer.ui.components.dashboard.charts import (
     method_distribution_chart, 

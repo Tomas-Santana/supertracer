@@ -1,6 +1,6 @@
 from nicegui import ui
 from typing import Optional
-from supertracer.auth import AuthService
+from supertracer.services.auth import AuthService
 
 def page_header(title: str, auth_service: Optional[AuthService] = None, back_path: Optional[str] = None):
     with ui.row().classes('w-full items-center justify-between border-b border-gray-700 pb-4 sticky top-0 bg-gray-900 z-20'):

@@ -1,5 +1,5 @@
 from nicegui import ui
-from supertracer.auth import AuthService
+from supertracer.services.auth import AuthService
 
 def render_login_page(auth_service: AuthService):
     def try_login():
