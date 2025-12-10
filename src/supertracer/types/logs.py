@@ -21,7 +21,6 @@ class Log(TypedDict):
     response_size_bytes: Optional[int]
     error_message: Optional[str]
     stack_trace: Optional[str]
-    stack_trace: Optional[str]
     
 
     

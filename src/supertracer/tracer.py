@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI
 from nicegui import ui
@@ -13,6 +14,7 @@ from supertracer.services.logger import setup_logger
 from supertracer.services.metrics import MetricsService
 from supertracer.services.auth import AuthService
 from supertracer.services.broadcaster import LogBroadcaster
+from supertracer.services.api import APIService
 from supertracer.middleware.logger_middleware import add_logger_middleware
 
 
@@ -22,21 +24,27 @@ class SuperTracer:
         self.connector = connector if connector else SQLiteConnector("requests.db")
         self.options: SupertracerOptions = options if options else {}
         self.metrics_service = MetricsService(self.options.get('metrics_options'))
-        self.auth_service = AuthService(self.options.get('auth_options'))
+        self.auth_service = AuthService(self.options.get('auth_options'), self.options.get('api_options'))
         self.broadcaster = LogBroadcaster()
         
-        # storage_secret is required for app.storage.user (session)
-        ui.run_with(self.app, mount_path="/supertracer", storage_secret='supertracer_secret_key')
         
-        self._init_db()
-        self._add_middleware()
-        self._add_routes()
-                
         self.logger = setup_logger('supertracer', 
                                    self.connector, 
                                    self.broadcaster,
                                    level=self.options.get('logger_options', {}).get('level', logging.INFO),
                                    format_string=self.options.get('logger_options', {}).get('format', '%(message)s'))
+        self._setup_ui()
+        self._init_db()
+        self._add_middleware()
+        self._add_routes()
+        self._add_api_routes()
+                
+    def _setup_ui(self):
+        
+        auth_options = self.options.get('auth_options', {})
+        storage_secret = auth_options.get('storage_secret', 'supertracer_secret')
+        storage_secret = storage_secret or os.getenv(auth_options.get('storage_secret_env', 'supertracer_secret'))
+        ui.run_with(self.app, mount_path="/supertracer", storage_secret=storage_secret)
     
     def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
         """Get a logger instance that saves to the database.
@@ -68,9 +76,17 @@ class SuperTracer:
         
 
     def _add_routes(self):
-        self._add_nicegui_logs()
+        self._add_pages()
+        
+    def _add_api_routes(self):
+        if not self.auth_service.api_enabled:
+            return
+        
+        api_service = APIService(self.auth_service, self.connector)
+        self.app.include_router(api_service.router)
 
-    def _add_nicegui_logs(self):
+
+    def _add_pages(self):
         """Add the /logs route with the new modular UI."""
         
         @ui.page('/login')

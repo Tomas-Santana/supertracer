@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from supertracer.types.logs import Log
+from supertracer.types.filters import LogFilters
 from datetime import datetime
 
 class BaseConnector(ABC):
@@ -12,18 +13,7 @@ class BaseConnector(ABC):
     @abstractmethod
     def fetch_logs(
         self, 
-        limit: int = 100, 
-        from_timestamp: datetime = datetime.min,
-        search_text: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        status_code: Optional[str] = None,
-        log_level: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        methods: Optional[List[str]] = None,
-        min_latency: Optional[int] = None,
-        max_latency: Optional[int] = None,
-        has_error: bool = False
+        filters: Optional[LogFilters] = None,
     ) -> List[Log]:
         """Fetch log entries from the connector's storage."""
         pass
