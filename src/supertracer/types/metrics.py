@@ -6,7 +6,7 @@ class MetricRecord(TypedDict):
     method: str
     path: str
     status_code: int
-    latency_ms: float
+    duration_ms: float
     error_msg: Optional[str]
 
 class SummaryStats(TypedDict):
