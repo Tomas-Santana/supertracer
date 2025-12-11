@@ -108,7 +108,6 @@ from supertracer import SuperTracer, SupertracerOptions, LoggerOptions
 
 options = SupertracerOptions(
     logger_options=LoggerOptions(level=10), # DEBUG
-    save_own_traces=False
 )
 
 tracer = SuperTracer(app, options=options)
