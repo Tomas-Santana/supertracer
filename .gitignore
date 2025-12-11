@@ -6,3 +6,4 @@ pycache/
 generate_logs.py
 .pytest_cache/
 __pycache__/
+local/
