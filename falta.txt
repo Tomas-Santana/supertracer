@@ -1,5 +1,5 @@
 - [ ] Publicar el paquete
-- [ ] Hacer la documentación
+- [X] Hacer la documentación
 - [X] Componentizar mejor logs page
 - [X] Mejorar como se ven los filtros, la vista en mobile y las tablas del dashboard
 - [X] Componentizar mejor request detail page
