@@ -1,7 +1,6 @@
 from collections import deque, Counter
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any, Optional, Deque
-import statistics
 
 from supertracer.types.options import MetricsOptions
 from supertracer.types.metrics import (
@@ -56,7 +55,6 @@ class MetricsService:
             self.endpoint_latencies[path] = []
         self.endpoint_latencies[path].append(duration_ms)
         # Keep latency history per endpoint limited to avoid memory leak if not using deque there
-        # For simplicity, let's just keep last 100 latencies per endpoint for avg calc
         if len(self.endpoint_latencies[path]) > 100:
             self.endpoint_latencies[path].pop(0)
 
