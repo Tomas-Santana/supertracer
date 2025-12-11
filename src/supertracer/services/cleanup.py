@@ -4,6 +4,16 @@ import asyncio
 from logging import Logger
 
 class CleanupService:
+    """
+    Service to handle periodic cleanup of old logs based on retention options.
+    
+    Args:
+        app (FastAPI): The FastAPI application instance.
+        connector: The connector instance with a cleanup method.
+        retention_options (RetentionOptions): Options defining retention policy.
+        logger (Logger): Logger instance for logging cleanup actions.
+        
+    """
     def __init__(self, app: FastAPI, connector, retention_options: RetentionOptions, logger: Logger):
         self.app = app
         self.connector = connector

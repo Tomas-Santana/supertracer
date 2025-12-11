@@ -9,6 +9,9 @@ from supertracer.types.metrics import (
 )
 
 class MetricsService:
+    """
+    Service to record and analyze metrics related to logged requests.
+    """
     def __init__(self, options: Optional[MetricsOptions] = None):
         if options is None:
             self.options = MetricsOptions()

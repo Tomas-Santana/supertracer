@@ -22,6 +22,30 @@ from supertracer.middleware.logger_middleware import add_logger_middleware
 
 
 class SuperTracer:
+    """
+    The main class for the SuperTracer library.
+    
+    This class integrates with a FastAPI application to provide comprehensive request logging,
+    tracing, and a real-time dashboard. It handles the setup of middleware, database connectors,
+    authentication, and the user interface.
+
+    Args:
+        app (FastAPI): The FastAPI application instance to attach SuperTracer to.
+        connector (Optional[BaseConnector]): A database connector instance (e.g., SQLiteConnector, PostgreSQLConnector, MemoryConnector).
+            If not provided, defaults to MemoryConnector.
+        options (Optional[Union[SupertracerOptions, str]]): Configuration options for SuperTracer.
+            Can be a SupertracerOptions object or a path to a JSON configuration file.
+            If not provided, attempts to load from 'supertracer.config.json' or uses defaults.
+
+    Example:
+        ```python
+        from fastapi import FastAPI
+        from supertracer import SuperTracer
+        
+        app = FastAPI()
+        tracer = SuperTracer(app)
+        ```
+    """
     def __init__(self, 
         app: FastAPI, 
         connector: Optional[BaseConnector] = None, 

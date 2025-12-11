@@ -1,14 +1,23 @@
 import psycopg2
 import json
 from datetime import datetime, timedelta
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
 from supertracer.connectors.sql import SQLConnector
 from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
 from supertracer.types.options import RetentionOptions
 
 class PostgreSQLConnector(SQLConnector):
-    """PostgreSQL implementation of the SQL connector."""
+    """PostgreSQL implementation of the SQL connector.
+
+    Args:
+        host (str): Database host address.
+        port (int): Database port number.
+        database (str): Database name.
+        user (str): Database user.
+        password (str): Database user's password.
+        sslmode (str): SSL mode for the connection.
+    """
     
     def __init__(
         self, 
@@ -16,7 +25,8 @@ class PostgreSQLConnector(SQLConnector):
         port: int = 5432,
         database: str = "supertracer",
         user: str = "postgres",
-        password: str = ""
+        password: str = "",
+        sslmode: Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] = "prefer"
     ):
         super().__init__()
         self.host = host
@@ -24,6 +34,7 @@ class PostgreSQLConnector(SQLConnector):
         self.database = database
         self.user = user
         self.password = password
+        self.sslmode = sslmode
         self.connection = None
         self.cursor = None
     
@@ -34,7 +45,8 @@ class PostgreSQLConnector(SQLConnector):
             port=self.port,
             database=self.database,
             user=self.user,
-            password=self.password
+            password=self.password,
+            sslmode=self.sslmode
         )
         self.cursor = self.connection.cursor()
     

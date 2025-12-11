@@ -9,7 +9,11 @@ from supertracer.types.filters import LogFilters
 
 
 class SQLiteConnector(SQLConnector):
-    """SQLite implementation of the SQL connector."""
+    """SQLite implementation of the SQL connector.
+    
+    Args:
+        db_path (str): Path to the SQLite database file.
+    """
     
     def __init__(self, db_path: str = "supertracer.db"):
         super().__init__()

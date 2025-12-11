@@ -2,6 +2,9 @@ from typing import Callable, List
 from supertracer.types.logs import Log
 
 class LogBroadcaster:
+    """
+    A simple broadcaster to notify subscribers of new log entries.
+    """
     def __init__(self):
         self._subscribers: List[Callable[[Log], None]] = []
 

@@ -11,6 +11,15 @@ from supertracer.services.metrics import MetricsService
 
 
 class APIService:
+    """
+    Service to handle API routes for SuperTracer.
+    Provides endpoints to query logs, get log details, and fetch metrics.
+    Args:
+        auth (AuthService): The authentication service.
+        metrics (MetricsService): The metrics service.
+        connector (BaseConnector): The connector to fetch logs from.
+        
+    """
     BASE_PATH = "/supertracer-api/api/v1"
     def __init__(self, auth: AuthService, metrics: MetricsService, connector: BaseConnector):
         print("Initializing APIService")
