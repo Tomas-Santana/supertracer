@@ -100,7 +100,7 @@ class SuperTracer:
         if ui_options.storage_secret_env:
             storage_secret = os.getenv(ui_options.storage_secret_env, storage_secret)
             
-        ui.run_with(self.app, mount_path=ui_options.mount_path, storage_secret=storage_secret)
+        ui.run_with(self.app, mount_path=ui_options.mount_path, storage_secret=storage_secret, title="SuperTracer")
     
     def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
         """Get a logger instance that saves to the database.
