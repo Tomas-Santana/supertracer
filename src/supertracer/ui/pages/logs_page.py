@@ -16,7 +16,7 @@ from supertracer.ui.utils.logs_page import match_log_filters, format_log_entry
 
 
 
-def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster, auth_service: AuthService):
+def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster, auth_service: AuthService, page_size: int = 20):
     """Renders the logs page with filters and log entries."""
     
     new_logs_buffer: List[Log] = []
@@ -47,7 +47,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
     logs_table = LogsTable()
     
     # Pagination state
-    pagination = {'limit': 20}
+    pagination = {'limit': page_size}
     pagination_container = None
     last_log_timestamp: Dict[str, datetime | None] = {'value': None}
 
