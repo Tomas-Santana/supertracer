@@ -10,6 +10,7 @@ The API is configured using the `ApiOptions` class passed to `SuperTracer`.
 from src.supertracer.types import options
 
 api_config = options.ApiOptions(
+    base_path="/supertracer-api",  # Base path for the API
     api_enabled=True,              # Enable the API endpoints
     api_auth_enabled=True,         # Require authentication
     api_key="my-secret-key",       # Method 1: Direct API Key
@@ -22,6 +23,7 @@ api_config = options.ApiOptions(
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `base_path` | `str` | `'/supertracer-api'` | The base URL path for the API. |
 | `api_enabled` | `bool` | `False` | Master switch to enable or disable the API routes. |
 | `api_auth_enabled` | `bool` | `True` | If `True`, requests must provide a valid API key. If `False`, the API is public. |
 | `api_key` | `str` | `None` | A static string to use as the valid API key. |
@@ -42,10 +44,12 @@ If the check fails or the header is missing, the API returns `401 Unauthorized`.
 
 ## Endpoints
 
-The API is mounted at `/supertracer-api/api/v1`.
+The API is mounted at `{base_path}/api/v1`. The default `base_path` is `/supertracer-api`, so the default root is `/supertracer-api/api/v1`.
+
+You can change the `base_path` in the `ApiOptions`.
 
 ### 1. Query Logs
-**GET** `/supertracer-api/api/v1/logs`
+**GET** `{base_path}/api/v1/logs`
 
 Retrieve a list of logs based on filters.
 
@@ -66,16 +70,16 @@ Retrieve a list of logs based on filters.
 ```
 
 ### 2. Get Log Detail
-**GET** `/supertracer-api/api/v1/logs/{id}`
+**GET** `{base_path}/api/v1/logs/{id}`
 
 Retrieve full details for a specific log entry.
 
 ### 3. Get Metrics
-**GET** `/supertracer-api/api/v1/metrics`
+**GET** `{base_path}/api/v1/metrics`
 
 Retrieve current dashboard metrics (RPS, error rates, etc.).
 
 ### 4. Status Check
-**GET** `/supertracer-api/api/v1/status`
+**GET** `{base_path}/api/v1/status`
 
 Returns `{"status": "ok"}` if the API is operational.
