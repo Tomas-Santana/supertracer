@@ -1,7 +1,7 @@
 [project]
 name = "supertracer"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.1"
+description = "A powerful and easy-to-use logging and tracing library for FastAPI applications."
 readme = "README.md"
 authors = [
     { name = "Tomas Santana", email = "tomas.30604530@uru.edu" },
@@ -10,7 +10,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.122.0",
-    "nicegui>=3.3.1",
+    "nicegui>=2.0.0",
     "psycopg2>=2.9.11",
 ]
 
@@ -18,7 +18,8 @@ dependencies = [
 requires = ["uv_build>=0.9.11,<0.10.0"]
 build-backend = "uv_build"
 
-dependencies = [
-    "nicegui>=2.0.0",
-    "fastapi",
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
 ]
