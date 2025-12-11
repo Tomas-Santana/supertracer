@@ -1,6 +1,8 @@
-venv/
+.venv/
 pycache/
 *.pyc
 *.db
 .nicegui/
 generate_logs.py
+.pytest_cache/
+__pycache__/
