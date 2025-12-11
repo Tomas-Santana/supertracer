@@ -146,6 +146,7 @@ class SuperTracer:
         
         @ui.page('/login')
         def login_page():
+            ui.query('.nicegui-content').classes('p-0')
             if self.auth_service.is_authenticated():
                 ui.navigate.to('/logs')
                 return
@@ -153,6 +154,7 @@ class SuperTracer:
 
         @ui.page('/logs')
         def logs_page():
+            ui.query('.nicegui-content').classes('p-0')
             if not self.auth_service.is_authenticated():
                 ui.navigate.to('/login')
                 return
@@ -160,6 +162,7 @@ class SuperTracer:
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):
+            ui.query('.nicegui-content').classes('p-0')
             if not self.auth_service.is_authenticated():
                 ui.navigate.to('/login')
                 return
