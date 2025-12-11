@@ -33,8 +33,8 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
       user_agent = headers.get('user-agent')
       
       body = None
-      if options.capture_request_body:
-          max_size = options.max_request_body_size
+      if options.capture_options.capture_request_body:
+          max_size = options.capture_options.max_request_body_size
           body = await capture_request_body(request, max_size)
 
       start_time = time.time()
@@ -68,6 +68,9 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
           response_headers = dict(response.headers) if response else None
           response_body = None
           
+          if response and hasattr(response, 'body_iterator') and options.capture_options.capture_response_body:
+              max_size = options.capture_options.max_response_body_size
+              response_body = await capture_response_body(response, max_size)
           
           response_size = response.headers.get('content-length') if response and 'content-length' in response.headers else None
           if response_size is not None:
@@ -130,4 +133,41 @@ async def capture_request_body(request: Request, max_size: int) -> Optional[Any]
     except Exception:
         pass
     return None
+
+async def capture_response_body(response: StreamingResponse, max_size: int) -> Optional[Any]:
+    """Capture and return the response body if within size limits.
+    
+    Since StreamingResponse body is an async generator, we need to consume it
+    and then reconstruct a new generator for the response to use.
+    """
+    try:
+        body_chunks = []
+        body_size = 0
+        
+        # Consume the response body
+        async for chunk in response.body_iterator:
+            body_chunks.append(chunk)
+            body_size += len(chunk)
+            
+        # Reconstruct the body iterator for the actual response
+        async def new_body_iterator():
+            for chunk in body_chunks:
+                yield chunk
+                
+        response.body_iterator = new_body_iterator()
+        
+        # Process captured body if within limits
+        if body_size < max_size:
+            full_body = b"".join(body_chunks)
+            try:
+                return json.loads(full_body)
+            except:
+                return full_body.decode('utf-8', errors='ignore')
+                
+    except Exception as e:
+        print(f"Error capturing response body: {e}")
+        pass
+    return None
+
+
   
