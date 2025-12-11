@@ -174,7 +174,7 @@ class SQLiteConnector(SQLConnector):
         if filters.has_error:
             select_query += " AND (status_code >= 400 OR error_message IS NOT NULL)"
 
-        select_query += " ORDER BY timestamp DESC LIMIT ?"
+        select_query += " ORDER BY timestamp DESC, id DESC LIMIT ?"
         params.append(filters.limit)
         
         rows = self.query(select_query, tuple(params))
@@ -275,7 +275,7 @@ class SQLiteConnector(SQLConnector):
             query = """
                 DELETE FROM requests 
                 WHERE id NOT IN (
-                    SELECT id FROM requests ORDER BY timestamp DESC LIMIT ?
+                    SELECT id FROM requests ORDER BY timestamp DESC, id DESC LIMIT ?
                 )
             """
             self.execute(query, (retention_options.max_records,))
