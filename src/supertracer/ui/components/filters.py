@@ -1,6 +1,7 @@
 from nicegui import ui
 from typing import Callable, List, Optional
 from datetime import datetime
+from supertracer.types.filters import LogFilters
 from supertracer.ui.components.search_input import search_input
 
 class FilterState:
@@ -20,6 +21,20 @@ class FilterState:
     
     def reset(self):
         self.__init__()
+    
+    def to_log_filters(self) -> LogFilters:
+        return LogFilters(
+            search_text=self.search_text,
+            endpoint=self.endpoint,
+            status_code=self.status_code,
+            log_level=self.log_level if self.log_level != 'All Levels' else None,
+            methods=self.methods,
+            min_latency=int(self.min_latency) if self.min_latency else None,
+            max_latency=int(self.max_latency) if self.max_latency else None,
+            has_error=self.has_error,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
 
 def date_picker_input(label: str, bind_target: object, bind_property: str, on_change: Callable):
     with ui.date_input().props('outlined dense dark').classes('w-full').bind_value(bind_target, bind_property).on_value_change(on_change) as date:

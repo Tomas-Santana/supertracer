@@ -26,12 +26,12 @@ def render_request_detail_page(log_id: int, connector: BaseConnector, auth_servi
             
             # Grid for Performance and Client Info
             with ui.grid(columns=3).classes('w-full gap-6 lg:grid-cols-3'):
-                with ui.column().classes('lg:col-span-1 gap-6 w-full'):
+                with ui.column().classes('md:col-span-1 col-span-3 gap-6 w-full'):
                     general_info_card(log)
                     performance_card(log) if log.get('method') else None
                     client_info_card(log) if log.get('method') else None
                 
-                with ui.column().classes('lg:col-span-2 gap-6 w-full'):
+                with ui.column().classes('md:col-span-2 col-span-3 gap-6 w-full'):
                     if log.get('method'):
                         request_info_section(log) 
                         response_info_section(log) 

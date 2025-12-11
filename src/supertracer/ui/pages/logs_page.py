@@ -11,28 +11,30 @@ from supertracer.services.broadcaster import LogBroadcaster
 from supertracer.connectors.base import BaseConnector
 from supertracer.services.auth import AuthService
 from supertracer.types.logs import Log
+from supertracer.ui.utils.logs_page import match_log_filters, format_log_entry
 
-def format_log_entry(log: Log) -> Dict[str, Any]:
-    """Formats a log entry for display in the logs table."""
-    return {
-        'id': log.get('id'),
-        'timestamp': log.get('timestamp').strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
-        'method': log.get('method') or '',
-        'path': log.get('path') or '',
-        'status_code': log.get('status_code') or '',
-        'log_level': log.get('log_level') or '',
-        'duration_ms': log.get('duration_ms') or '',
-        'client_ip': log.get('client_ip') or '',
-        'error_message': log.get('error_message') or ''
-    }
-    
+
+
+
 def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, broadcaster: LogBroadcaster, auth_service: AuthService):
     """Renders the logs page with filters and log entries."""
     
     new_logs_buffer: List[Log] = []
 
     def handle_new_log(log: Log):
-        new_logs_buffer.append(log)
+        if match_log_filters(log, LogFilters(
+            search_text=state.search_text,
+            endpoint=state.endpoint,
+            status_code=state.status_code,
+            log_level=state.log_level,
+            methods=state.methods,
+            min_latency=int(state.min_latency) if state.min_latency else None,
+            max_latency=int(state.max_latency) if state.max_latency else None,
+            has_error=state.has_error,
+            start_date=None,
+            end_date=None
+        )):
+            new_logs_buffer.append(log)
 
     # Subscribe to broadcaster
     broadcaster.subscribe(handle_new_log)
@@ -45,13 +47,11 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
     logs_table = LogsTable()
     
     # Pagination state
-    pagination = {'cursor_id': None, 'limit': 50}
-    load_more_container = None
+    pagination = {'limit': 20}
+    pagination_container = None
+    last_log_timestamp: Dict[str, datetime | None] = {'value': None}
 
     def refresh_logs(e=None):
-        # Reset pagination
-        pagination['cursor_id'] = None
-        
         # Parse dates if present
         start_dt = None
         end_dt = None
@@ -89,31 +89,36 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
             has_error=state.has_error,
             start_date=start_dt,
             end_date=end_dt,
-            limit=pagination['limit'],
-            cursor_id=None
+            limit=pagination['limit']
         )
         
         logs_data: List[Log] = connector.fetch_logs(filters=filters)
         
         logs_table.set_logs(logs_data)
         
-        # Update cursor and button visibility
         if logs_data:
-            pagination['cursor_id'] = logs_data[-1]['id']
+            last_log_timestamp['value'] = logs_data[-1]['timestamp']
+        else:
+            last_log_timestamp['value'] = None
             
-        if load_more_container:
-            load_more_container.clear()
+        if pagination_container:
+            pagination_container.clear()
             if len(logs_data) >= pagination['limit']:
-                with load_more_container:
+                with pagination_container:
                     ui.button('Load More', on_click=load_more_logs).classes('w-full bg-gray-800 text-gray-400 hover:bg-gray-700')
 
     def load_more_logs():
-        if pagination['cursor_id'] is None:
+        if not last_log_timestamp['value']:
             return
+            
+        if pagination_container:
+            pagination_container.clear()
 
         # Parse dates (same as refresh_logs)
         start_dt = None
-        end_dt = None
+        # Use the last timestamp as the end date for pagination
+        end_dt = last_log_timestamp['value']
+        
         if state.start_date:
             try:
                 clean_start = state.start_date.replace('/', '-')
@@ -121,14 +126,6 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
                     start_dt = datetime.strptime(f"{clean_start} {state.start_time}", '%Y-%m-%d %H:%M')
                 else:
                     start_dt = datetime.strptime(clean_start, '%Y-%m-%d')
-            except ValueError: pass
-        if state.end_date:
-            try:
-                clean_end = state.end_date.replace('/', '-')
-                if state.end_time:
-                    end_dt = datetime.strptime(f"{clean_end} {state.end_time}", '%Y-%m-%d %H:%M')
-                else:
-                    end_dt = datetime.strptime(clean_end, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
             except ValueError: pass
 
         filters = LogFilters(
@@ -142,21 +139,19 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
             has_error=state.has_error,
             start_date=start_dt,
             end_date=end_dt,
-            limit=pagination['limit'],
-            cursor_id=pagination['cursor_id']
+            limit=pagination['limit']
         )
 
         logs_data: List[Log] = connector.fetch_logs(filters=filters)
         
         if logs_data:
             logs_table.append_logs(logs_data)
-            pagination['cursor_id'] = logs_data[-1]['id']
-        
-        if load_more_container:
-            load_more_container.clear()
-            if len(logs_data) >= pagination['limit']:
-                with load_more_container:
+            last_log_timestamp['value'] = logs_data[-1]['timestamp']
+            
+            if pagination_container and len(logs_data) >= pagination['limit']:
+                with pagination_container:
                     ui.button('Load More', on_click=load_more_logs).classes('w-full bg-gray-800 text-gray-400 hover:bg-gray-700')
+
 
     def flush_logs():
         if not new_logs_buffer:
@@ -184,8 +179,7 @@ def render_logs_page(connector: BaseConnector, metrics_service: MetricsService, 
         # Logs table section
         logs_table.build()
         
-        # Load More Button Container
-        load_more_container = ui.row().classes('w-full max-w-7xl mx-auto justify-center pb-6')
+        pagination_container = ui.row().classes('w-full max-w-7xl mx-auto justify-center pb-6')
         
         # Initial load
         refresh_logs()

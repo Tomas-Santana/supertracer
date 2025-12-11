@@ -13,7 +13,6 @@ class LogFilters(BaseModel):
     min_latency: int | None = None
     max_latency: int | None = None
     has_error: bool | None = None
-    cursor_id: int | None = None
     
     def to_query_params(self) -> str:
         params = self.model_dump(exclude_none=True)
