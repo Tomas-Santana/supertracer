@@ -95,12 +95,12 @@ class SuperTracer:
                
     def _setup_ui(self):
         
-        auth_options = self.options.auth_options
-        storage_secret = auth_options.storage_secret or 'supertracer_secret'
-        if auth_options.storage_secret_env:
-            storage_secret = os.getenv(auth_options.storage_secret_env, storage_secret)
+        ui_options = self.options.ui_options
+        storage_secret = ui_options.storage_secret or 'supertracer_secret'
+        if ui_options.storage_secret_env:
+            storage_secret = os.getenv(ui_options.storage_secret_env, storage_secret)
             
-        ui.run_with(self.app, mount_path="/supertracer", storage_secret=storage_secret)
+        ui.run_with(self.app, mount_path=ui_options.mount_path, storage_secret=storage_secret)
     
     def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
         """Get a logger instance that saves to the database.
@@ -174,7 +174,7 @@ class SuperTracer:
         if not self.auth_service.api_enabled:
             return
         
-        api_service = APIService(self.auth_service, self.metrics_service, self.connector)
+        api_service = APIService(self.auth_service, self.metrics_service, self.connector, base_path=self.options.api_options.base_path)
         self.app.include_router(api_service.router)
 
     def _add_pages(self):
@@ -194,7 +194,7 @@ class SuperTracer:
             if not self.auth_service.is_authenticated():
                 ui.navigate.to('/login')
                 return
-            render_logs_page(self.connector, self.metrics_service, self.broadcaster, self.auth_service)
+            render_logs_page(self.connector, self.metrics_service, self.broadcaster, self.auth_service, page_size=self.options.ui_options.page_size)
 
         @ui.page('/logs/{log_id}')
         def request_detail(log_id: int):
