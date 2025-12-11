@@ -6,6 +6,8 @@ from supertracer.connectors.sql import SQLConnector
 from supertracer.types.options import RetentionOptions
 from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
+from supertracer.connectors.queries import sqlite as queries
+import os
 
 
 class SQLiteConnector(SQLConnector):
@@ -44,42 +46,12 @@ class SQLiteConnector(SQLConnector):
     
     def init_db(self) -> None:
         """Initialize the requests table schema."""
-        create_table_query = """
-            CREATE TABLE IF NOT EXISTS requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT,
-                timestamp REAL NOT NULL,
-                method TEXT,
-                path TEXT,
-                url TEXT,
-                headers TEXT,
-                log_level TEXT,
-                status_code INTEGER,
-                duration_ms INTEGER,
-                client_ip TEXT,
-                user_agent TEXT,
-                request_query TEXT,
-                request_body TEXT,
-                response_headers TEXT,
-                response_body TEXT,
-                response_size_bytes INTEGER,
-                error_message TEXT,
-                stack_trace TEXT
-            )
-        """
-        self.execute(create_table_query)
+        # Create table if not exists
+        self.execute(queries.CREATE_TABLE)
         self.commit_transaction()
     
     def save_log(self, log: Log) -> int:
         """Save a log entry to the database."""
-        insert_query = """
-            INSERT INTO requests (
-                content, timestamp, method, path, url, headers, log_level, status_code, duration_ms,
-                client_ip, user_agent, request_query, request_body, response_headers, response_body,
-                response_size_bytes, error_message, stack_trace
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
-        """
         
         # Convert datetime to timestamp
         timestamp = log['timestamp'].timestamp() if isinstance(log['timestamp'], datetime) else log['timestamp']
@@ -89,7 +61,7 @@ class SQLiteConnector(SQLConnector):
             return json.dumps(val) if val is not None else None
 
         res = self.execute(
-            insert_query,
+            queries.INSERT_LOG,
             (
                 log.get('content'),
                 timestamp,
@@ -125,12 +97,7 @@ class SQLiteConnector(SQLConnector):
             timestamp_value = 0.0  # Unix epoch (1970-01-01)
         else:
             timestamp_value = filters.start_date.timestamp() if filters and filters.start_date else 0.0
-        select_query = """
-            SELECT 
-                id, content, timestamp, method, path, url, log_level, status_code, duration_ms, error_message
-            FROM requests
-            WHERE timestamp >= ?
-        """
+        select_query = queries.FETCH_LOGS_BASE
         params: List = [timestamp_value]
 
         if filters.end_date:
@@ -210,16 +177,8 @@ class SQLiteConnector(SQLConnector):
 
     def fetch_log(self, log_id: int) -> Optional[Log]:
         """Fetch a single log entry by ID."""
-        select_query = """
-            SELECT 
-                id, content, timestamp, method, path, url, headers, log_level, status_code, duration_ms,
-                client_ip, user_agent, request_query, request_body, response_headers, response_body,
-                response_size_bytes, error_message, stack_trace
-            FROM requests
-            WHERE id = ?
-        """
         
-        rows = self.query(select_query, (log_id,))
+        rows = self.query(queries.FETCH_LOG_BY_ID, (log_id,))
         
         if not rows:
             return None
@@ -267,8 +226,7 @@ class SQLiteConnector(SQLConnector):
             cutoff_time = datetime.now() - timedelta(hours=retention_options.cleanup_older_than_hours)
             timestamp_val = cutoff_time.timestamp()
             
-            query = "DELETE FROM requests WHERE timestamp < ?"
-            self.execute(query, (timestamp_val,))
+            self.execute(queries.CLEANUP_OLDER_THAN, (timestamp_val,))
             self.commit_transaction()
             
         # 2. Enforce max_records
@@ -276,13 +234,7 @@ class SQLiteConnector(SQLConnector):
             # Delete oldest records if count > max_records
             # DELETE FROM requests WHERE id NOT IN (SELECT id FROM requests ORDER BY timestamp DESC LIMIT ?)
             
-            query = """
-                DELETE FROM requests 
-                WHERE id NOT IN (
-                    SELECT id FROM requests ORDER BY timestamp DESC, id DESC LIMIT ?
-                )
-            """
-            self.execute(query, (retention_options.max_records,))
+            self.execute(queries.CLEANUP_MAX_RECORDS, (retention_options.max_records,))
             self.commit_transaction()
             
         return deleted_count
