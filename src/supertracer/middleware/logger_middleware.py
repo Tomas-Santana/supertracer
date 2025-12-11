@@ -33,13 +33,13 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
       user_agent = headers.get('user-agent')
       
       body = None
-      if options.get('capture_request_body', True):
-          max_size = options.get('max_request_body_size', 1024 * 10)  # 10KB default
+      if options.capture_request_body:
+          max_size = options.max_request_body_size
           body = await capture_request_body(request, max_size)
 
       start_time = time.time()
       
-      if not options.get('save_own_traces', False):
+      if not options.save_own_traces:
           # Skip logging if the request is to Supertracer itself
           if url.startswith(str(request.base_url) + "supertracer"):
               return await call_next(request)

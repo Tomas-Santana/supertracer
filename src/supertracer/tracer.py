@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI
 from nicegui import ui
@@ -15,39 +16,59 @@ from supertracer.services.metrics import MetricsService
 from supertracer.services.auth import AuthService
 from supertracer.services.broadcaster import LogBroadcaster
 from supertracer.services.api import APIService
+from supertracer.services.cleanup import CleanupService
 from supertracer.middleware.logger_middleware import add_logger_middleware
 
 
 class SuperTracer:
-    def __init__(self, app: FastAPI, connector: Optional[BaseConnector] = None, options: Optional[SupertracerOptions] = None):
+    def __init__(self, 
+        app: FastAPI, 
+        connector: Optional[BaseConnector] = None, 
+        options: Optional[SupertracerOptions] = None
+        ):
         self.app = app
         self.connector = connector if connector else SQLiteConnector("requests.db")
-        self.options: SupertracerOptions = options if options else {}
-        self.metrics_service = MetricsService(self.options.get('metrics_options'))
-        self.auth_service = AuthService(self.options.get('auth_options'), self.options.get('api_options'))
+        
+        if options is None:
+            self.options = SupertracerOptions()
+        elif isinstance(options, dict):
+            try:
+                self.options = SupertracerOptions(**options)
+            except Exception as e:
+                raise ValueError(f"Invalid SupertracerOptions: {e}")
+        else:
+            self.options = options
+
+        self.metrics_service = MetricsService(self.options.metrics_options)
+        self.auth_service = AuthService(self.options.auth_options, self.options.api_options)
         self.broadcaster = LogBroadcaster()
         
         
         self.logger = setup_logger('supertracer', 
                                    self.connector, 
                                    self.broadcaster,
-                                   level=self.options.get('logger_options', {}).get('level', logging.INFO),
-                                   format_string=self.options.get('logger_options', {}).get('format', '%(message)s'))
+                                   level=self.options.logger_options.level,
+                                   format_string=self.options.logger_options.format)
         self._setup_ui()
         self._init_db()
         self._add_middleware()
         self._add_routes()
         self._add_api_routes()
+        
+        self.cleanup = CleanupService(self.app, self.connector, self.options.retention_options, self.logger)
                 
     def _setup_ui(self):
         
-        auth_options = self.options.get('auth_options', {})
-        storage_secret = auth_options.get('storage_secret', 'supertracer_secret')
-        storage_secret = storage_secret or os.getenv(auth_options.get('storage_secret_env', 'supertracer_secret'))
+        auth_options = self.options.auth_options
+        storage_secret = auth_options.storage_secret or 'supertracer_secret'
+        if auth_options.storage_secret_env:
+            storage_secret = os.getenv(auth_options.storage_secret_env, storage_secret)
+            
         ui.run_with(self.app, mount_path="/supertracer", storage_secret=storage_secret)
     
     def get_logger(self, name: Optional[str] = None, options: Optional[LoggerOptions] = None) -> logging.Logger:
         """Get a logger instance that saves to the database.
+        
         
         Args:
             name: Logger name (if None, returns the default supertracer logger)
@@ -55,18 +76,53 @@ class SuperTracer:
         Returns:
             Logger instance configured to save to database
         
+        ## Notes:
+        
+            If you do not have access to the SuperTracer instance, you can get the logger via:
+            
+            ```python
+            >>> import logging
+            
+             >>> logger = logging.getLogger('supertracer') 
+             >>> # or any other name (if you have created it using supertracer.create_logger or get_logger)
+        ```
+        
         Example:
+        ```python
             >>> tracer = SuperTracer(app)
             >>> logger = tracer.get_logger('my_module')
             >>> logger.info("Processing request")
             >>> logger.error("An error occurred")
+        ```
+            
+        
         """
         if name is None or name == 'supertracer':
             return self.logger
+            
+        if options is None:
+            logger_opts = LoggerOptions()
+        elif isinstance(options, dict):
+            logger_opts = LoggerOptions(**options)
+        else:
+            logger_opts = options
+            
         return setup_logger(name, self.connector, self.broadcaster,
-                            level=options.get('level', logging.INFO) if options else logging.INFO,
-                            format_string=options.get('format') if options else '%(levelname)s: %(message)s')
+                            level=logger_opts.level,
+                            format_string=logger_opts.format)
 
+    def create_logger(self, name: str, options: Optional[LoggerOptions] = None) -> None:
+        """Create and configure a new logger that saves to the database.
+        
+        This is useful if you want to create multiple loggers with different names
+        and configurations.
+        
+        Args:
+            name: Logger name
+            options: LoggerOptions instance or dict to configure the logger
+        """
+        self.get_logger(name, options)
+    
     def _init_db(self):
         self.connector.connect()
         self.connector.init_db()
@@ -82,9 +138,8 @@ class SuperTracer:
         if not self.auth_service.api_enabled:
             return
         
-        api_service = APIService(self.auth_service, self.connector)
+        api_service = APIService(self.auth_service, self.metrics_service, self.connector)
         self.app.include_router(api_service.router)
-
 
     def _add_pages(self):
         """Add the /logs route with the new modular UI."""

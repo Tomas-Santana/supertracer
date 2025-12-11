@@ -1,6 +1,8 @@
 from typing import Optional
 from fastapi import FastAPI, Request, Response
 from src.supertracer import SuperTracer
+from src.supertracer.connectors.memory import MemoryConnector
+from src.supertracer.types import options
 import logging
 import time
 
@@ -10,20 +12,32 @@ app = FastAPI()
 auth_fn = lambda u, p: True
 
 # Initialize SuperTracer
-tracer = SuperTracer(app, options={
-    "logger_options": {
-        "level": logging.DEBUG,
-        "format": "%(message)s"
-    },
-    "auth_options": {
-        "auth_fn": auth_fn,
-    },
-
-    "save_own_traces": False,
-    "api_options": {
-        "api_enabled": True,
-    },
-})  
+tracer = SuperTracer(
+    app, 
+    connector=MemoryConnector(),
+    options=options.SupertracerOptions(
+        logger_options=options.LoggerOptions(
+            level=logging.DEBUG,
+            format="%(message)s"
+        ),
+        auth_options=options.AuthOptions(
+            auth_enabled=True,
+            auth_fn=auth_fn,
+        ),
+        api_options=options.ApiOptions(
+            api_enabled=True,
+            api_auth_fn=lambda key: True,
+        ),
+        save_own_traces=False,
+        retention_options=options.RetentionOptions(
+            enabled=True,
+            max_records=5000,
+            cleanup_interval_minutes=1,
+            cleanup_older_than_hours=1,
+        )
+                
+    )
+    )  
 
 logger = logging.getLogger('supertracer')
 

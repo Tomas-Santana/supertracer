@@ -7,13 +7,15 @@ from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
 from typing import List, Optional, Annotated
 from supertracer.middleware.api_middleware import authenticate_request
+from supertracer.services.metrics import MetricsService
 
 
 class APIService:
     BASE_PATH = "/supertracer-api/api/v1"
-    def __init__(self, auth: AuthService, connector: BaseConnector):
+    def __init__(self, auth: AuthService, metrics: MetricsService, connector: BaseConnector):
         print("Initializing APIService")
         self.auth = auth
+        self.metrics = metrics
         self.connector = connector
         self.router = APIRouter(prefix=self.BASE_PATH, tags=["SuperTracer API"])
 
@@ -60,6 +62,13 @@ class APIService:
             
             
             return self.get_log(id)
+        
+        @self.router.get("/metrics")
+        async def get_metrics_endpoint(request: Request):
+            if not authenticate_request(request, self.auth, ApiOptions()):
+                return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+            # For simplicity, return a placeholder metrics response
+            return self.metrics.get_summary()
         
         
         

@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, Any
 from nicegui import app, ui
 from supertracer.types.options import ApiOptions, AuthOptions
 
@@ -21,11 +21,21 @@ class AuthService:
         
     """
     def __init__(self, options: Optional[AuthOptions] = None, api_options: Optional[ApiOptions] = None):
-        self.options = options or {}
-        self.api_options = api_options or {}
-        self.enabled = self.options.get('auth_enabled', False)
+        if options is None:
+            self.options = AuthOptions()
+        else:
+            self.options = options
+            
+        if api_options is None:
+            self.api_options = ApiOptions()
+        elif isinstance(api_options, dict):
+            self.api_options = ApiOptions(**api_options)
+        else:
+            self.api_options = api_options
+
+        self.enabled = self.options.auth_enabled
         print(f"api_options: {self.api_options}")
-        self.api_enabled = self.api_options.get('api_enabled', False)
+        self.api_enabled = self.api_options.api_enabled
         self._setup_auth_method()
 
 
@@ -37,21 +47,21 @@ class AuthService:
         self.auth_method: Optional[Callable[[str, str], bool]] = None
 
         # 1. Direct Username/Password
-        if self.options.get('username') and self.options.get('password'):
+        if self.options.username and self.options.password:
             methods_count += 1
             self.auth_method = self._check_direct_auth
 
         # 2. Env Vars
-        if self.options.get('username_env') and self.options.get('password_env'):
+        if self.options.username_env and self.options.password_env:
             methods_count += 1
             if self.auth_method is None:
                 self.auth_method = self._check_env_auth
 
         # 3. Custom Function
-        if self.options.get('auth_fn'):
+        if self.options.auth_fn:
             methods_count += 1
             if self.auth_method is None:
-                self.auth_method = self.options.get('auth_fn')
+                self.auth_method = self.options.auth_fn
 
         if methods_count > 1:
             logger.warning("Multiple authentication methods configured for SuperTracer. Using the highest priority one (Direct > Env > Function).")
@@ -67,30 +77,30 @@ class AuthService:
         self.api_key_method: Optional[Callable[[str], bool]] = None
 
         # 1. Direct API Key
-        if self.api_options.get('api_key'):
+        if self.api_options.api_key:
             methods_count += 1
             self.api_key_method = self._check_direct_api_auth
 
         # 2. Env Var
-        if self.api_options.get('api_key_env'):
+        if self.api_options.api_key_env:
             methods_count += 1
             if self.api_key_method is None:
                 self.api_key_method = self._check_env_api_auth
 
         # 3. Custom Function
-        if self.api_options.get('api_auth_fn'):
+        if self.api_options.api_auth_fn:
             methods_count += 1
             if self.api_key_method is None:
-                self.api_key_method = self.api_options.get('api_auth_fn')
+                self.api_key_method = self.api_options.api_auth_fn
 
         if methods_count > 1:
             logger.warning("Multiple API key authentication methods configured for SuperTracer. Using the highest priority one (Direct > Env > Function).")
             
     def _check_direct_api_auth(self, api_key: str) -> bool:
-        return api_key == self.options.get('api_key')
+        return api_key == self.api_options.api_key
 
     def _check_env_api_auth(self, api_key: str) -> bool:
-        env_key = os.environ.get(self.options.get('api_key_env', ''))
+        env_key = os.environ.get(self.api_options.api_key_env or '')
         return api_key == env_key
       
     def api_authenticate(self, api_key: str) -> bool:
@@ -101,12 +111,12 @@ class AuthService:
         return self.api_key_method(api_key)  
     
     def _check_direct_auth(self, username: str, password: str) -> bool:
-        return (username == self.options.get('username') and 
-                password == self.options.get('password'))
+        return (username == self.options.username and 
+                password == self.options.password)
 
     def _check_env_auth(self, username: str, password: str) -> bool:
-        env_user = os.environ.get(self.options.get('username_env', ''))
-        env_pass = os.environ.get(self.options.get('password_env', ''))
+        env_user = os.environ.get(self.options.username_env or '')
+        env_pass = os.environ.get(self.options.password_env or '')
         return username == env_user and password == env_pass
 
     def authenticate(self, username: str, password: str) -> bool:

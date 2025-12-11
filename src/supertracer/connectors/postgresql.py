@@ -1,10 +1,11 @@
 import psycopg2
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Any
 from supertracer.connectors.sql import SQLConnector
 from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
+from supertracer.types.options import RetentionOptions
 
 class PostgreSQLConnector(SQLConnector):
     """PostgreSQL implementation of the SQL connector."""
@@ -69,6 +70,36 @@ class PostgreSQLConnector(SQLConnector):
         if self.connection is None:
             raise ConnectionError("Database is not connected")
         self.connection.commit()
+
+    def cleanup(self, retention_options: RetentionOptions) -> int:
+        """Clean up old logs based on retention options using PostgreSQL syntax."""
+        if not retention_options.enabled:
+            return 0
+            
+        deleted_count = 0
+        
+        # 1. Delete older than X hours
+        if retention_options.cleanup_older_than_hours > 0:
+            cutoff_time = datetime.now() - timedelta(hours=retention_options.cleanup_older_than_hours)
+            timestamp_val = cutoff_time.timestamp()
+            
+            query = "DELETE FROM requests WHERE timestamp < %s"
+            self.execute(query, (timestamp_val,))
+            self.commit_transaction()
+            
+        # 2. Enforce max_records
+        if retention_options.max_records > 0:
+            # PostgreSQL syntax for keeping top N records
+            query = """
+                DELETE FROM requests 
+                WHERE id NOT IN (
+                    SELECT id FROM requests ORDER BY timestamp DESC LIMIT %s
+                )
+            """
+            self.execute(query, (retention_options.max_records,))
+            self.commit_transaction()
+            
+        return deleted_count
 
     def init_db(self) -> None:
         """Initialize the requests table schema with PostgreSQL-specific syntax."""

@@ -11,9 +11,13 @@ from supertracer.types.metrics import (
 
 class MetricsService:
     def __init__(self, options: Optional[MetricsOptions] = None):
-        self.options = options or {}
-        self.history_limit = self.options.get('history_limit', 1000)
-        self.enabled = self.options.get('enabled', True)
+        if options is None:
+            self.options = MetricsOptions()
+        else:
+            self.options = options
+            
+        self.history_limit = self.options.history_limit
+        self.enabled = self.options.enabled
         
         # In-memory storage
         self.requests_history: Deque[MetricRecord] = deque(maxlen=self.history_limit)
@@ -159,3 +163,15 @@ class MetricsService:
         errors = list(self.errors_history)
         errors.reverse()
         return errors[:limit]
+    
+    def get_summary(self) -> Dict[str, Any]:
+        return {
+            'summary_stats': self.get_summary_stats(),
+            'method_distribution': self.get_method_distribution(),
+            'status_distribution': self.get_status_distribution(),
+            'timeline_data': self.get_timeline_data(),
+            'performance_data': self.get_performance_data(),
+            'top_endpoints': self.get_top_endpoints(),
+            'slow_endpoints': self.get_slow_endpoints(),
+            'recent_errors': self.get_recent_errors()
+        }

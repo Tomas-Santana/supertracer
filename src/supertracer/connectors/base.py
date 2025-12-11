@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
+from supertracer.types.options import RetentionOptions
 from datetime import datetime
 
 class BaseConnector(ABC):
@@ -36,4 +37,9 @@ class BaseConnector(ABC):
     @abstractmethod
     def init_db(self) -> None:
         """Initialize the database schema."""
+        pass
+
+    @abstractmethod
+    def cleanup(self, retention_options: RetentionOptions) -> int:
+        """Clean up old logs based on retention options. Returns number of deleted records."""
         pass
