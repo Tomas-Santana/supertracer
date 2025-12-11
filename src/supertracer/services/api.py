@@ -5,7 +5,7 @@ from supertracer.connectors.base import BaseConnector
 from supertracer.types.options import ApiOptions
 from supertracer.types.logs import Log
 from supertracer.types.filters import LogFilters
-from typing import List, Optional, Annotated
+from typing import Optional, Annotated
 from supertracer.middleware.api_middleware import authenticate_request
 from supertracer.services.metrics import MetricsService
 
@@ -39,7 +39,7 @@ class APIService:
           filters: Annotated[LogFilters, Query(...)],
           request: Request
         ):
-            if not authenticate_request(request, self.auth, ApiOptions()):
+            if not authenticate_request(request, self.auth, self.auth.api_options):
                 return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
             data = self.query_logs(filters)
             last_date = data[-1]['timestamp'] if data else None
@@ -57,7 +57,7 @@ class APIService:
 
         @self.router.get("/logs/{id}", response_model=Optional[Log])
         async def get_log_endpoint(id: int, request: Request):
-            if not authenticate_request(request, self.auth, ApiOptions()):
+            if not authenticate_request(request, self.auth, self.auth.api_options):
                 return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
             
             
@@ -65,7 +65,7 @@ class APIService:
         
         @self.router.get("/metrics")
         async def get_metrics_endpoint(request: Request):
-            if not authenticate_request(request, self.auth, ApiOptions()):
+            if not authenticate_request(request, self.auth, self.auth.api_options):
                 return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
             # For simplicity, return a placeholder metrics response
             return self.metrics.get_summary()
@@ -74,7 +74,7 @@ class APIService:
         
         @self.router.get("/status")
         async def status_endpoint(request: Request):
-            if not authenticate_request(request, self.auth, ApiOptions()):
+            if not authenticate_request(request, self.auth, self.auth.api_options):
                 return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
             return {"status": "ok"}
         
