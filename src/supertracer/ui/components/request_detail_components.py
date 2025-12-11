@@ -109,6 +109,12 @@ def response_info_section(log: Log):
             with ui.column().classes('w-full'):
                 ui.label('Response Headers').classes('mb-2 text-base font-semibold text-gray-300')
                 headers_table(log.get('response_headers'))
+                
+                # response body if exists
+            if log.get('response_body'):
+                with ui.column().classes('w-full'):
+                    ui.label('Response Body').classes('mb-2 text-base font-semibold text-gray-300')
+                    json_viewer(log.get('response_body'))
         
             
             if is_error:
