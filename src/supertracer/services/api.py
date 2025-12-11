@@ -26,6 +26,7 @@ class APIService:
         self.auth = auth
         self.metrics = metrics
         self.connector = connector
+        self.BASE_PATH = self.BASE_PATH.format(base_path=base_path)
         self.router = APIRouter(prefix=self.BASE_PATH, tags=["SuperTracer API"])
 
         self._add_routes()

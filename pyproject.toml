@@ -1,6 +1,6 @@
 [project]
 name = "supertracer"
-version = "0.1.1"
+version = "0.1.2"
 description = "A powerful and easy-to-use logging and tracing library for FastAPI applications."
 readme = "README.md"
 authors = [
