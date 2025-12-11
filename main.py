@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import FastAPI, Request, Response
 from src.supertracer import SuperTracer
-from src.supertracer.connectors.memory import MemoryConnector
+from src.supertracer.connectors import MemoryConnector
 from src.supertracer.types import options
 import logging
 import time
@@ -21,7 +21,7 @@ tracer = SuperTracer(
             format="%(message)s"
         ),
         auth_options=options.AuthOptions(
-            auth_enabled=True,
+            auth_enabled=False,
             auth_fn=auth_fn,
         ),
         api_options=options.ApiOptions(
@@ -34,6 +34,12 @@ tracer = SuperTracer(
             max_records=5000,
             cleanup_interval_minutes=1,
             cleanup_older_than_hours=1,
+        ),
+        capture_options=options.CaptureOptions(
+            capture_request_body=True,
+            max_request_body_size=1024 * 5,  # 5 KB
+            capture_response_body=True,
+            max_response_body_size=1024 * 5,  # 5 KB
         )
                 
     )
