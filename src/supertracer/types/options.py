@@ -31,6 +31,12 @@ class MetricsOptions(BaseModel):
         if v <= 0:
             raise ValueError('refresh_interval must be positive')
         return v
+    
+class UIOptions(BaseModel):
+    mount_path: str = "/supertracer"
+    page_size: int = 20
+    storage_secret: str | None = None
+    storage_secret_env: str | None = None
 
 class AuthOptions(BaseModel):
     auth_enabled: bool = False
@@ -39,8 +45,6 @@ class AuthOptions(BaseModel):
     username_env: str | None = None
     password_env: str | None = None
     auth_fn: Callable[[str, str], bool] | None = None
-    storage_secret: str | None = None
-    storage_secret_env: str | None = None
 
     @model_validator(mode='after')
     def check_auth_config(self) -> 'AuthOptions':
@@ -54,6 +58,7 @@ class AuthOptions(BaseModel):
         return self
 
 class ApiOptions(BaseModel):
+    base_path: str = "/supertracer-api"
     api_enabled: bool = False
     api_auth_enabled: bool = True
     api_key: str | None = None
@@ -92,6 +97,7 @@ class CaptureOptions(BaseModel):
     max_request_body_size: int = 1024 * 10  # 10 KB
     capture_response_body: bool = True
     max_response_body_size: int = 1024 * 10  # 10 KB
+    save_own_traces: bool = False
 
     @field_validator('max_request_body_size', 'max_response_body_size')
     @classmethod
@@ -107,4 +113,5 @@ class SupertracerOptions(BaseModel):
     api_options: ApiOptions = Field(default_factory=ApiOptions)
     retention_options: RetentionOptions = Field(default_factory=RetentionOptions)
     capture_options: CaptureOptions = Field(default_factory=CaptureOptions)
-    save_own_traces: bool = False
+    ui_options: UIOptions = Field(default_factory=UIOptions)
+ 

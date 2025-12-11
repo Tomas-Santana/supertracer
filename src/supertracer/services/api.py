@@ -20,8 +20,8 @@ class APIService:
         connector (BaseConnector): The connector to fetch logs from.
         
     """
-    BASE_PATH = "/supertracer-api/api/v1"
-    def __init__(self, auth: AuthService, metrics: MetricsService, connector: BaseConnector):
+    BASE_PATH = "{base_path}/api/v1"
+    def __init__(self, auth: AuthService, metrics: MetricsService, connector: BaseConnector, base_path: str = "/supertracer-api"):
         print("Initializing APIService")
         self.auth = auth
         self.metrics = metrics
