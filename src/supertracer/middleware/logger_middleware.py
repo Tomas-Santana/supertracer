@@ -39,7 +39,7 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
 
       start_time = time.time()
       
-      if not options.save_own_traces:
+      if not options.capture_options.save_own_traces:
           # Skip logging if the request is to Supertracer itself
           if url.startswith(str(request.base_url) + "supertracer"):
               return await call_next(request)
