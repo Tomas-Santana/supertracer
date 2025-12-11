@@ -1,9 +1,0 @@
-- [ ] Publicar el paquete
-- [X] Hacer la documentación
-- [X] Componentizar mejor logs page
-- [X] Mejorar como se ven los filtros, la vista en mobile y las tablas del dashboard
-- [X] Componentizar mejor request detail page
-- [X] Hacer tests
-- [X] Hacer las rutas de API externas (que retorne datos de requests)
-- [X] Hacer la autenticación
-- [X] Configuracion por JSON
