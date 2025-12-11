@@ -28,7 +28,6 @@ tracer = SuperTracer(
             api_enabled=True,
             api_auth_enabled=False
         ),
-        save_own_traces=False,
         retention_options=options.RetentionOptions(
             enabled=True,
             max_records=5000,
