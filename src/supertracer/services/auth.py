@@ -72,6 +72,10 @@ class AuthService:
     def _setup_api_key_method(self):
         if not self.api_enabled:
             return
+        
+        if not self.api_options.api_auth_enabled:
+            logger.warning("API authentication is disabled. All API requests will be allowed.")
+            return
 
         methods_count = 0
         self.api_key_method: Optional[Callable[[str], bool]] = None

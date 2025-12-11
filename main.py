@@ -21,12 +21,12 @@ tracer = SuperTracer(
             format="%(message)s"
         ),
         auth_options=options.AuthOptions(
-            auth_enabled=False,
+            auth_enabled=True,
             auth_fn=auth_fn,
         ),
         api_options=options.ApiOptions(
             api_enabled=True,
-            api_auth_fn=lambda key: True,
+            api_auth_enabled=False
         ),
         save_own_traces=False,
         retention_options=options.RetentionOptions(

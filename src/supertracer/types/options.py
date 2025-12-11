@@ -55,13 +55,14 @@ class AuthOptions(BaseModel):
 
 class ApiOptions(BaseModel):
     api_enabled: bool = False
+    api_auth_enabled: bool = True
     api_key: str | None = None
     api_key_env: str | None = None
     api_auth_fn: Callable[[str], bool] | None = None
 
     @model_validator(mode='after')
     def check_api_config(self) -> 'ApiOptions':
-        if self.api_enabled:
+        if self.api_enabled and self.api_auth_enabled:
             if not (self.api_key or self.api_key_env or self.api_auth_fn):
                 raise ValueError('If api_enabled is True, you must provide api_key, api_key_env, or api_auth_fn')
         return self
