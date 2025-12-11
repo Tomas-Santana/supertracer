@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 authors = [
     { name = "Tomas Santana", email = "tomas.30604530@uru.edu" },
-    { name = "Sebastián Cohen", email = "sebastian.cohen@uru.edu" }
+    { name = "Sebastian Cohen", email = "sebascoga2030@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
