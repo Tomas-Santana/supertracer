@@ -25,10 +25,6 @@ def match_log_filters(log: Log, filters: LogFilters) -> bool:
     if filters.max_latency is not None:
         if (log.get('duration_ms') or 0) > filters.max_latency:
             return False
-    if filters.has_error is not None:
-        has_error = bool(log.get('error_message'))
-        if has_error != filters.has_error:
-            return False
     if filters.start_date:
         if log.get('timestamp') and log['timestamp'] < filters.start_date:
             return False
