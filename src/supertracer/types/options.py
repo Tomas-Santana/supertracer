@@ -32,6 +32,12 @@ class RetentionOptions(BaseModel):
     max_records: int = 10000
     cleanup_interval_minutes: int = 30
     cleanup_older_than_hours: int = 24
+    
+class CaptureOptions(BaseModel):
+    capture_request_body: bool = True
+    max_request_body_size: int = 1024 * 10  # 10 KB
+    capture_response_body: bool = True
+    max_response_body_size: int = 1024 * 10  # 10 KB
 
 class SupertracerOptions(BaseModel):
     logger_options: LoggerOptions = Field(default_factory=LoggerOptions)
@@ -39,6 +45,5 @@ class SupertracerOptions(BaseModel):
     auth_options: AuthOptions = Field(default_factory=AuthOptions)
     api_options: ApiOptions = Field(default_factory=ApiOptions)
     retention_options: RetentionOptions = Field(default_factory=RetentionOptions)
+    capture_options: CaptureOptions = Field(default_factory=CaptureOptions)
     save_own_traces: bool = False
-    capture_request_body: bool = True
-    max_request_body_size: int = 1024 * 10
