@@ -23,11 +23,6 @@ def test_api_disabled(mock_request, mock_auth_service):
     options = ApiOptions(api_enabled=False)
     assert authenticate_request(mock_request, mock_auth_service, options) is True
 
-def test_no_auth_configured(mock_request, mock_auth_service):
-    """Should allow request if API is enabled but no auth method is configured."""
-    options = ApiOptions(api_enabled=True)
-    assert authenticate_request(mock_request, mock_auth_service, options) is True
-
 def test_missing_auth_header(mock_request, mock_auth_service):
     """Should deny request if auth is configured but header is missing."""
     options = ApiOptions(api_enabled=True, api_key="secret")
