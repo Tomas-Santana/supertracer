@@ -97,6 +97,7 @@ class CaptureOptions(BaseModel):
     max_request_body_size: int = 1024 * 10  # 10 KB
     capture_response_body: bool = True
     max_response_body_size: int = 1024 * 10  # 10 KB
+    exclude_headers: list[str] = Field(default_factory=lambda: ['authorization', 'cookie'])
     save_own_traces: bool = False
 
     @field_validator('max_request_body_size', 'max_response_body_size')

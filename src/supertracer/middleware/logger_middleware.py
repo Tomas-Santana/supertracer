@@ -28,6 +28,9 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
       url = str(request.url)
       path = request.url.path
       headers = dict(request.headers)
+      if options.capture_options.exclude_headers:
+            for h in options.capture_options.exclude_headers:
+                headers.pop(h.lower(), None)
       query_params = dict(request.query_params)
       client_ip = request.client.host if request.client else None
       user_agent = headers.get('user-agent')
@@ -66,6 +69,13 @@ def add_logger_middleware(options: SupertracerOptions, connector, broadcaster, m
           
           # Capture response details if response exists
           response_headers = dict(response.headers) if response else None
+          
+          if response_headers and options.capture_options.exclude_headers:
+              for h in options.capture_options.exclude_headers:
+                  response_headers.pop(h.lower(), None)
+                  
+          
+          
           response_body = None
           
           if response and hasattr(response, 'body_iterator') and options.capture_options.capture_response_body:
