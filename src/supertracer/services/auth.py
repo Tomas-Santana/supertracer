@@ -37,6 +37,7 @@ class AuthService:
         print(f"api_options: {self.api_options}")
         self.api_enabled = self.api_options.api_enabled
         self._setup_auth_method()
+        self._setup_api_key_method()
 
 
     def _setup_auth_method(self):
