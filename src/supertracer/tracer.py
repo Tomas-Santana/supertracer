@@ -1,11 +1,11 @@
 import logging
 import os
 import asyncio
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from fastapi import FastAPI
 from nicegui import ui
 from supertracer.connectors.base import BaseConnector
-from supertracer.connectors.sqlite import SQLiteConnector
+from supertracer.connectors.memory import MemoryConnector
 from supertracer.types.logs import Log
 from supertracer.types.options import LoggerOptions, SupertracerOptions
 from supertracer.ui.pages.logs_page import render_logs_page
@@ -17,6 +17,7 @@ from supertracer.services.auth import AuthService
 from supertracer.services.broadcaster import LogBroadcaster
 from supertracer.services.api import APIService
 from supertracer.services.cleanup import CleanupService
+from supertracer.services.json_options import JSONOptionsService
 from supertracer.middleware.logger_middleware import add_logger_middleware
 
 
@@ -24,20 +25,13 @@ class SuperTracer:
     def __init__(self, 
         app: FastAPI, 
         connector: Optional[BaseConnector] = None, 
-        options: Optional[SupertracerOptions] = None
+        options: Optional[Union[SupertracerOptions, str]] = None
         ):
         self.app = app
-        self.connector = connector if connector else SQLiteConnector("requests.db")
         
-        if options is None:
-            self.options = SupertracerOptions()
-        elif isinstance(options, dict):
-            try:
-                self.options = SupertracerOptions(**options)
-            except Exception as e:
-                raise ValueError(f"Invalid SupertracerOptions: {e}")
-        else:
-            self.options = options
+        self._setup_options(options)
+
+        self.connector = connector if connector else MemoryConnector()
 
         self.metrics_service = MetricsService(self.options.metrics_options)
         self.auth_service = AuthService(self.options.auth_options, self.options.api_options)
@@ -56,7 +50,25 @@ class SuperTracer:
         self._add_api_routes()
         
         self.cleanup = CleanupService(self.app, self.connector, self.options.retention_options, self.logger)
-                
+         
+    def _setup_options(self, options: Optional[SupertracerOptions | str]):
+        if options is None:
+            # Try loading from default file
+            loaded_options = JSONOptionsService.load_from_file()
+            self.options = loaded_options if loaded_options else SupertracerOptions()
+        elif isinstance(options, str):
+            loaded_options = JSONOptionsService.load_from_file(options)
+            if loaded_options is None:
+                 raise ValueError(f"Configuration file not found: {options}")
+            self.options = loaded_options
+        elif isinstance(options, dict):
+            try:
+                self.options = SupertracerOptions(**options)
+            except Exception as e:
+                raise ValueError(f"Invalid SupertracerOptions: {e}")
+        else:
+            self.options = options
+               
     def _setup_ui(self):
         
         auth_options = self.options.auth_options
