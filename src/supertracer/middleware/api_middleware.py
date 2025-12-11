@@ -14,7 +14,12 @@ def authenticate_request(request: Request, auth_service: AuthService, api_option
     Returns:
         True if authenticated, False otherwise
     """
-    return True
+    if not api_options.api_enabled:
+        return True  # API is disabled, allow all requests
+    
+    if not api_options.api_auth_fn and not api_options.api_key and not api_options.api_key_env:
+        return True  # No authentication configured, allow all requests
+    
     if not hasattr(auth_service, 'api_authenticate'):
         return True  # No authentication required
 
